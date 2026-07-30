@@ -2,8 +2,13 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Data directory defaults to the project folder (d:\smart)
-DATA_DIR = os.environ.get('DATA_DIR', BASE_DIR)
+# Data directory handling for local vs Vercel Serverless
+if os.environ.get('VERCEL'):
+    DATA_DIR = os.environ.get('DATA_DIR', '/tmp/SmartAttendanceData')
+    MODELS_DIR = os.path.join('/tmp', 'models')
+else:
+    DATA_DIR = os.environ.get('DATA_DIR', BASE_DIR)
+    MODELS_DIR = os.path.join(BASE_DIR, 'models')
 
 DATASET_DIR = os.path.join(DATA_DIR, 'dataset')
 EMBEDDINGS_DIR = os.path.join(DATA_DIR, 'embeddings')
@@ -11,7 +16,6 @@ CAPTURED_DIR = os.path.join(DATA_DIR, 'captured')
 ATTENDANCE_DIR = os.path.join(DATA_DIR, 'attendance')
 DB_DIR = os.path.join(DATA_DIR, 'database')
 DB_PATH = os.path.join(DB_DIR, 'smart_attendance.db')
-MODELS_DIR = os.path.join(BASE_DIR, 'models')
 
 # Create necessary directories on D: drive
 for path in [DATA_DIR, DATASET_DIR, EMBEDDINGS_DIR, CAPTURED_DIR, ATTENDANCE_DIR, DB_DIR, MODELS_DIR]:
