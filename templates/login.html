@@ -8,7 +8,7 @@
             <i class="bi bi-camera-reels-fill"></i>
         </div>
         <h4 class="fw-bold mb-1">Smart Attendance AI</h4>
-        <p class="text-muted small mb-4">Sign in to access admin portal</p>
+        <p class="text-muted small mb-4">Sign in to access teacher & admin portal</p>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -25,7 +25,7 @@
                 <label class="form-label small fw-semibold">Username</label>
                 <div class="input-group">
                     <span class="input-group-text bg-body-tertiary"><i class="bi bi-person"></i></span>
-                    <input type="text" name="username" class="form-control" placeholder="admin" required autofocus>
+                    <input type="text" name="username" class="form-control" placeholder="Enter your username" required autofocus>
                 </div>
             </div>
 
@@ -44,7 +44,8 @@
     </div>
 
     <div class="card-footer bg-transparent border-top-0 text-center py-3">
-        <small class="text-muted">Default login: <strong>admin</strong> / <strong>admin123</strong></small>
+        <small class="text-muted d-block">Admin: <strong>admin</strong> / <strong>admin123</strong></small>
+        <small class="text-muted d-block mt-1">Teacher: <strong>teacher</strong> / <strong>teacher123</strong></small>
     </div>
 </div>
 {% endblock %}

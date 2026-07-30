@@ -112,6 +112,15 @@ def init_db():
     else:
         cursor.execute("UPDATE Users SET role = 'admin' WHERE username = ?", (config.DEFAULT_ADMIN_USER,))
 
+    # Insert default teacher user if not exists
+    cursor.execute("SELECT id FROM Users WHERE username = ?", ('teacher',))
+    if not cursor.fetchone():
+        teacher_pass_hash = generate_password_hash('teacher123')
+        cursor.execute("""
+        INSERT INTO Users (username, password_hash, full_name, department, role, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, ('teacher', teacher_pass_hash, 'Faculty Teacher', 'Computer Science', 'teacher', now_str))
+
     # Default settings
     cursor.execute("INSERT OR IGNORE INTO Settings (key, value) VALUES ('recognition_threshold', ?)",
                    (str(config.RECOGNITION_THRESHOLD),))
@@ -121,9 +130,12 @@ def init_db():
 
 # User Security Functions
 def verify_user(username, password):
+    if not username or not password:
+        return None
+    username_clean = username.strip()
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM Users WHERE username = ?", (username,))
+    cursor.execute("SELECT * FROM Users WHERE LOWER(username) = LOWER(?)", (username_clean,))
     user = cursor.fetchone()
     conn.close()
     if user and check_password_hash(user['password_hash'], password):
