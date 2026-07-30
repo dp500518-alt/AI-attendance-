@@ -93,6 +93,11 @@ async function startRegistrationWebcam(videoElemId) {
     const video = document.getElementById(videoElemId);
     if (!video) return;
 
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("⚠️ Mobile Camera Security Notice:\n\nBrowsers block live webcam streams over plain HTTP network IP (http://192.168.29.113:5000).\n\nPlease use the 'Choose File / Take Photo' button on your phone to snap a photo directly!");
+        return;
+    }
+
     try {
         regWebcamStream = await navigator.mediaDevices.getUserMedia({
             video: { width: 640, height: 480, facingMode: "user" }
@@ -100,7 +105,7 @@ async function startRegistrationWebcam(videoElemId) {
         video.srcObject = regWebcamStream;
     } catch (err) {
         console.error("Webcam access error:", err);
-        alert("Could not access webcam. Please ensure camera permissions are granted.");
+        alert("Could not access webcam. On mobile network IP (HTTP), browsers block live camera stream. Please grant camera permissions or use the direct 'Take Photo / Upload' option.");
     }
 }
 
@@ -164,6 +169,11 @@ async function startClassroomWebcam(videoElemId) {
     const video = document.getElementById(videoElemId);
     if (!video) return;
 
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("⚠️ Mobile Camera Security Notice:\n\nBrowsers block live webcam streams over plain HTTP network IP (http://192.168.29.113:5000).\n\nPlease use Option 1 ('Upload Classroom Image / Take Photo') on your phone to snap a photo directly!");
+        return;
+    }
+
     try {
         classroomWebcamStream = await navigator.mediaDevices.getUserMedia({
             video: { width: 1280, height: 720, facingMode: "environment" }
@@ -171,7 +181,7 @@ async function startClassroomWebcam(videoElemId) {
         video.srcObject = classroomWebcamStream;
     } catch (err) {
         console.error("Classroom webcam error:", err);
-        alert("Unable to open camera feed.");
+        alert("Unable to open camera feed. On mobile network IP (HTTP), browsers restrict live streaming. Please use the direct Upload / Take Photo option.");
     }
 }
 

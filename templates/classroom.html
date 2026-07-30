@@ -16,9 +16,9 @@
             <div class="card-body-custom">
                 <form action="{{ url_for('classroom_upload') }}" method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">Select Classroom Image File</label>
-                        <input type="file" name="classroom_photo" class="form-control" accept="image/*" required>
-                        <small class="text-muted">Supports multi-person high-res JPG / PNG photos.</small>
+                        <label class="form-label small fw-semibold">Select or Take Classroom Photo</label>
+                        <input type="file" name="classroom_photo" class="form-control" accept="image/*" capture="environment" required>
+                        <small class="text-muted">Tap to take a picture with phone camera or select photo from gallery.</small>
                     </div>
                     <button type="submit" class="btn btn-primary-custom w-100 justify-content-center">
                         <i class="bi bi-cpu-fill"></i> Detect & Mark Attendance
