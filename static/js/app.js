@@ -5,7 +5,45 @@
 document.addEventListener('DOMContentLoaded', () => {
     initThemeToggle();
     initFlashAutoDismiss();
+    initMobileSidebar();
 });
+
+// 0. Mobile Navigation Sidebar Toggle
+function initMobileSidebar() {
+    const sidebar = document.getElementById('appSidebar');
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+    const closeBtn = document.getElementById('sidebarCloseBtn');
+    const backdrop = document.getElementById('sidebarBackdrop');
+
+    if (!sidebar) return;
+
+    function openSidebar() {
+        sidebar.classList.add('show');
+        if (backdrop) backdrop.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeSidebar() {
+        sidebar.classList.remove('show');
+        if (backdrop) backdrop.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    if (toggleBtn) toggleBtn.addEventListener('click', openSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+    if (backdrop) backdrop.addEventListener('click', closeSidebar);
+
+    // Auto-close sidebar on navigating links on mobile screens
+    const navLinks = sidebar.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 992) {
+                closeSidebar();
+            }
+        });
+    });
+}
+
 
 // 1. Dark Mode Toggle
 function initThemeToggle() {

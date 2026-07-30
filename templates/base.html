@@ -14,8 +14,11 @@
 <body>
 
     {% if session.get('user') %}
+    <!-- Mobile Sidebar Backdrop -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
     <!-- Sidebar Navigation -->
-    <aside class="app-sidebar">
+    <aside class="app-sidebar" id="appSidebar">
         <div class="sidebar-header">
             <div class="brand-icon">
                 <i class="bi bi-camera-reels-fill"></i>
@@ -24,6 +27,7 @@
                 <div class="brand-text">Smart Attendance</div>
                 <small class="text-white-50" style="font-size: 0.75rem;">AI Vision v1.0</small>
             </div>
+            <button type="button" class="btn-close btn-close-white d-lg-none ms-auto" id="sidebarCloseBtn" aria-label="Close sidebar"></button>
         </div>
         <ul class="nav-links">
             <li class="nav-item">
@@ -90,7 +94,10 @@
     <div class="main-wrapper">
         <!-- Top Navbar -->
         <header class="top-navbar">
-            <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-secondary d-lg-none border-0 p-1 px-2 me-1" id="sidebarToggleBtn" aria-label="Toggle navigation">
+                    <i class="bi bi-list fs-3"></i>
+                </button>
                 <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
             </div>
             <div class="navbar-actions">
