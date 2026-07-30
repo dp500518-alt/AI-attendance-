@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Smart Attendance{% endblock %}
+{% block page_title %}Overview Dashboard{% endblock %}
+
+{% block content %}
+<!-- Metric Cards Grid -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stat-primary">
+            <div>
+                <div class="stat-label">Total Enrolled</div>
+                <div class="stat-value">{{ stats.total_students }}</div>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-people-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stat-success">
+            <div>
+                <div class="stat-label">Present Today</div>
+                <div class="stat-value">{{ stats.present_today }}</div>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-check-circle-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stat-warning">
+            <div>
+                <div class="stat-label">Absent Today</div>
+                <div class="stat-value">{{ stats.absent_today }}</div>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-x-circle-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stat-info">
+            <div>
+                <div class="stat-label">Attendance Rate</div>
+                <div class="stat-value">{{ stats.attendance_pct }}%</div>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-pie-chart-fill"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions & Stats Banner -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-lg-8">
+        <div class="custom-card h-100 mb-0">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-lightning-charge-fill text-warning"></i> Quick Actions
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <a href="{{ url_for('classroom_attendance') }}" class="btn btn-outline-primary w-100 p-3 text-start d-flex flex-column gap-2 h-100">
+                            <i class="bi bi-camera-fill fs-3 text-primary"></i>
+                            <div>
+                                <div class="fw-bold">Classroom Photo</div>
+                                <small class="text-muted">Take or upload picture for auto-marking</small>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <a href="{{ url_for('register_student') }}" class="btn btn-outline-success w-100 p-3 text-start d-flex flex-column gap-2 h-100">
+                            <i class="bi bi-person-plus-fill fs-3 text-success"></i>
+                            <div>
+                                <div class="fw-bold">Register Student</div>
+                                <small class="text-muted">Enroll new student & capture photos</small>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <a href="{{ url_for('export_csv_route') }}" class="btn btn-outline-info w-100 p-3 text-start d-flex flex-column gap-2 h-100">
+                            <i class="bi bi-file-earmark-spreadsheet-fill fs-3 text-info"></i>
+                            <div>
+                                <div class="fw-bold">Export CSV</div>
+                                <small class="text-muted">Download attendance report</small>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="custom-card h-100 mb-0">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-info-circle-fill text-info"></i> System Info
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <ul class="list-group list-group-flush bg-transparent">
+                    <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
+                        <span class="text-muted">Today's Date:</span>
+                        <span class="fw-semibold">{{ stats.today_date }}</span>
+                    </li>
+                    <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
+                        <span class="text-muted">Face Embeddings:</span>
+                        <span class="badge bg-primary rounded-pill">{{ embedded_count }} / {{ stats.total_students }}</span>
+                    </li>
+                    <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
+                        <span class="text-muted">Similarity Threshold:</span>
+                        <span class="fw-semibold text-success">{{ threshold }}</span>
+                    </li>
+                    <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
+                        <span class="text-muted">AI Detection:</span>
+                        <span class="badge bg-success rounded-pill">OpenCV YuNet / SFace</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Today's Attendance Activity Table -->
+<div class="custom-card">
+    <div class="card-header-custom">
+        <h5 class="card-title-custom">
+            <i class="bi bi-calendar-check-fill text-success"></i> Today's Marked Attendance
+        </h5>
+        <a href="{{ url_for('attendance_history') }}" class="btn btn-sm btn-outline-secondary">
+            View Full Log <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+    <div class="card-body-custom p-0">
+        <div class="table-responsive">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Student ID</th>
+                        <th>Roll Number</th>
+                        <th>Name</th>
+                        <th>Department</th>
+                        <th>Semester</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if today_attendance %}
+                        {% for row in today_attendance %}
+                        <tr>
+                            <td><i class="bi bi-clock me-1 text-muted"></i> {{ row.time }}</td>
+                            <td><code>{{ row.student_id }}</code></td>
+                            <td>{{ row.roll_number }}</td>
+                            <td class="fw-semibold">{{ row.name }}</td>
+                            <td><span class="badge bg-secondary-subtle text-body">{{ row.department }}</span></td>
+                            <td>Sem {{ row.semester }}</td>
+                            <td>
+                                <span class="badge-status badge-present">
+                                    <i class="bi bi-check-circle-fill"></i> Present
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="bi bi-clipboard-x fs-2 d-block mb-2 text-secondary"></i>
+                                No attendance records marked today yet. Capture or upload a classroom photo to begin.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

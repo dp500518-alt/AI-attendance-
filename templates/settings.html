@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}System Settings - Smart Attendance{% endblock %}
+{% block page_title %}System & Model Settings{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Recognition Threshold Settings -->
+    <div class="col-12 col-lg-6">
+        <div class="custom-card mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-sliders text-primary"></i> AI Recognition Threshold
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <form action="{{ url_for('update_settings') }}" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Cosine Similarity Matching Threshold</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <input type="range" class="form-range flex-grow-1" min="0.30" max="0.85" step="0.05" id="thresholdRange" name="threshold" value="{{ threshold }}" oninput="document.getElementById('thresholdVal').innerText = this.value">
+                            <span id="thresholdVal" class="fw-bold text-primary fs-5">{{ threshold }}</span>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            Higher values (e.g. 0.65) increase strictness and reduce false positives. Lower values (e.g. 0.40) help in dim lighting or tilted faces.
+                        </small>
+                    </div>
+                    <button type="submit" class="btn btn-primary-custom">
+                        <i class="bi bi-check-lg"></i> Update Threshold
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Train Embeddings -->
+        <div class="custom-card">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-cpu-fill text-success"></i> Re-Train Embeddings
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <p class="text-muted small">
+                    If you added new photos manually into <code>dataset/</code>, click below to re-extract 128-d / 512-d feature vectors for all registered students.
+                </p>
+                <form action="{{ url_for('retrain_embeddings') }}" method="POST">
+                    <button type="submit" class="btn btn-outline-success">
+                        <i class="bi bi-arrow-repeat me-1"></i> Re-generate All Face Embeddings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security & Password Change -->
+    <div class="col-12 col-lg-6">
+        <div class="custom-card">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-shield-lock-fill text-warning"></i> Admin Account Security
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <form action="{{ url_for('change_password') }}" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Current Admin Username</label>
+                        <input type="text" class="form-control bg-body-tertiary" value="{{ session.get('user') }}" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">New Password</label>
+                        <input type="password" name="new_password" class="form-control" placeholder="••••••••" required minlength="4">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Confirm New Password</label>
+                        <input type="password" name="confirm_password" class="form-control" placeholder="••••••••" required minlength="4">
+                    </div>
+                    <button type="submit" class="btn btn-warning text-white fw-semibold">
+                        <i class="bi bi-key-fill"></i> Change Admin Password
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

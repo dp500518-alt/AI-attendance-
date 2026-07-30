@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Classroom Photo Attendance - Smart Attendance{% endblock %}
+{% block page_title %}Classroom Photo Attendance{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Controls Panel: Upload or Webcam -->
+    <div class="col-12 col-lg-5">
+        <!-- Option 1: File Upload -->
+        <div class="custom-card mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-upload text-primary"></i> Upload Classroom Image
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <form action="{{ url_for('classroom_upload') }}" method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Select Classroom Image File</label>
+                        <input type="file" name="classroom_photo" class="form-control" accept="image/*" required>
+                        <small class="text-muted">Supports multi-person high-res JPG / PNG photos.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary-custom w-100 justify-content-center">
+                        <i class="bi bi-cpu-fill"></i> Detect & Mark Attendance
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Option 2: Live Webcam Snap -->
+        <div class="custom-card mb-0">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-webcam-fill text-success"></i> Webcam Snapshot
+                </h5>
+            </div>
+            <div class="card-body-custom text-center">
+                <div class="video-preview-box mb-3" style="height: 280px;">
+                    <video id="classroomVideo" autoplay playsinline muted></video>
+                </div>
+                <div class="d-flex justify-content-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="startClassroomWebcam('classroomVideo')">
+                        <i class="bi bi-camera-video"></i> Start Camera
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success" onclick="snapAndSubmitClassroom()">
+                        <i class="bi bi-camera"></i> Snap Classroom Photo
+                    </button>
+                </div>
+                <!-- Hidden form for Base64 snap submission -->
+                <form id="snapForm" action="{{ url_for('classroom_snap') }}" method="POST" class="d-none">
+                    <input type="hidden" id="snap_b64" name="snap_b64" value="">
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Output & Annotated Classroom Photo View -->
+    <div class="col-12 col-lg-7">
+        <div class="custom-card">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-person-check-fill text-success"></i> AI Recognition Result
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                {% if result_summary %}
+                <div class="alert alert-info border-0 shadow-sm d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <strong>Faces Detected:</strong> {{ result_summary.total_detected }} &nbsp;|&nbsp;
+                        <strong class="text-success">Newly Marked:</strong> {{ result_summary.newly_marked_present|length }} &nbsp;|&nbsp;
+                        <strong class="text-secondary">Already Marked:</strong> {{ result_summary.already_marked_present|length }} &nbsp;|&nbsp;
+                        <strong class="text-danger">Unknown:</strong> {{ result_summary.unknown_count }}
+                    </div>
+                </div>
+
+                <!-- Annotated Image Display -->
+                <div class="text-center mb-4">
+                    <img src="{{ result_summary.annotated_image_b64 }}" class="img-fluid rounded border shadow-sm" alt="Classroom Bounding Boxes">
+                </div>
+
+                <!-- Newly Marked Students List -->
+                {% if result_summary.newly_marked_present %}
+                <h6 class="fw-bold mb-2 text-success"><i class="bi bi-check-circle-fill"></i> Marked Present Today:</h6>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm table-hover align-middle small">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Name</th>
+                                <th>Roll Number</th>
+                                <th>Department</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for st in result_summary.newly_marked_present %}
+                            <tr>
+                                <td><code>{{ st.student_id }}</code></td>
+                                <td class="fw-semibold">{{ st.name }}</td>
+                                <td>{{ st.roll_number }}</td>
+                                <td>{{ st.department }}</td>
+                                <td><span class="badge bg-success-subtle text-success">{{ st.confidence }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-image fs-1 d-block mb-2 text-secondary"></i>
+                    Upload a classroom photo or snap a picture to trigger AI face detection and multi-student attendance marking.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function snapAndSubmitClassroom() {
+        const b64 = captureClassroomPhoto('classroomVideo');
+        if (b64) {
+            document.getElementById('snap_b64').value = b64;
+            document.getElementById('snapForm').submit();
+        }
+    }
+</script>
+{% endblock %}

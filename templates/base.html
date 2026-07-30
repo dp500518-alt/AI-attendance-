@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Smart Attendance System{% endblock %}</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    {% if session.get('user') %}
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar">
+        <div class="sidebar-header">
+            <div class="brand-icon">
+                <i class="bi bi-camera-reels-fill"></i>
+            </div>
+            <div>
+                <div class="brand-text">Smart Attendance</div>
+                <small class="text-white-50" style="font-size: 0.75rem;">AI Vision v1.0</small>
+            </div>
+        </div>
+        <ul class="nav-links">
+            <li class="nav-item">
+                <a href="{{ url_for('dashboard') }}" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+                    <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('timetable_management') }}" class="nav-link {% if active_page == 'timetable' %}active{% endif %}">
+                    <i class="bi bi-calendar3"></i> Class Timetable
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('register_student') }}" class="nav-link {% if active_page == 'register' %}active{% endif %}">
+                    <i class="bi bi-person-plus-fill"></i> Register Student
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('classroom_attendance') }}" class="nav-link {% if active_page == 'classroom' %}active{% endif %}">
+                    <i class="bi bi-camera-fill"></i> Classroom Photo
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('attendance_history') }}" class="nav-link {% if active_page == 'history' %}active{% endif %}">
+                    <i class="bi bi-clock-history"></i> Attendance Log
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('student_list') }}" class="nav-link {% if active_page == 'students' %}active{% endif %}">
+                    <i class="bi bi-people-fill"></i> Enrolled Students
+                </a>
+            </li>
+            {% if session.get('user_role') == 'admin' %}
+            <li class="nav-item">
+                <a href="{{ url_for('teacher_management') }}" class="nav-link {% if active_page == 'teachers' %}active{% endif %}">
+                    <i class="bi bi-person-badge-fill"></i> Teacher Accounts
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('settings') }}" class="nav-link {% if active_page == 'settings' %}active{% endif %}">
+                    <i class="bi bi-gear-fill"></i> System Settings
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+        <div class="p-3 border-top border-secondary-subtle">
+            <div class="d-flex align-items-center justify-content-between text-white-50">
+                <div class="d-flex flex-column overflow-hidden">
+                    <span class="text-truncate fw-medium text-white small">
+                        <i class="bi bi-person-circle me-1"></i> {{ session.get('user_fullname') or session.get('user') }}
+                    </span>
+                    <small class="badge {% if session.get('user_role') == 'admin' %}bg-danger{% else %}bg-primary{% endif %} text-uppercase mt-1" style="width: max-content; font-size: 0.65rem;">
+                        {{ session.get('user_role', 'teacher') }}
+                    </small>
+                </div>
+                <a href="{{ url_for('logout') }}" class="text-danger text-decoration-none small ms-2" title="Logout">
+                    <i class="bi bi-box-arrow-right fs-5"></i>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+        <!-- Top Navbar -->
+        <header class="top-navbar">
+            <div class="d-flex align-items-center gap-3">
+                <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+            </div>
+            <div class="navbar-actions">
+                <button class="btn-theme-toggle" id="themeToggleBtn" title="Toggle Dark/Light Mode">
+                    <i class="bi bi-moon-stars-fill"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        <main class="content-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show border-0 shadow-sm" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    {% else %}
+    <!-- Public Layout for Login -->
+    <div class="w-100 min-vh-100 d-flex flex-column justify-content-center align-items-center">
+        {% block login_content %}{% endblock %}
+    </div>
+    {% endif %}
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

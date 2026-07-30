@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Admin Login - Smart Attendance{% endblock %}
+
+{% block login_content %}
+<div class="card custom-card border-0 shadow-lg" style="width: 100%; max-width: 420px;">
+    <div class="card-body-custom p-4 text-center">
+        <div class="brand-icon mx-auto mb-3" style="width: 56px; height: 56px; font-size: 1.75rem;">
+            <i class="bi bi-camera-reels-fill"></i>
+        </div>
+        <h4 class="fw-bold mb-1">Smart Attendance AI</h4>
+        <p class="text-muted small mb-4">Sign in to access admin portal</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} p-2 small mb-3">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('login') }}" method="POST">
+            <div class="text-start mb-3">
+                <label class="form-label small fw-semibold">Username</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-body-tertiary"><i class="bi bi-person"></i></span>
+                    <input type="text" name="username" class="form-control" placeholder="admin" required autofocus>
+                </div>
+            </div>
+
+            <div class="text-start mb-4">
+                <label class="form-label small fw-semibold">Password</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-body-tertiary"><i class="bi bi-lock"></i></span>
+                    <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary-custom w-100 justify-content-center py-2">
+                <i class="bi bi-box-arrow-in-right me-1"></i> Log In
+            </button>
+        </form>
+    </div>
+
+    <div class="card-footer bg-transparent border-top-0 text-center py-3">
+        <small class="text-muted">Default login: <strong>admin</strong> / <strong>admin123</strong></small>
+    </div>
+</div>
+{% endblock %}
