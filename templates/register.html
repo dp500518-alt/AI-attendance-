@@ -30,7 +30,7 @@
                     </div>
 
                     <div class="row g-2 mb-3">
-                        <div class="col-6">
+                        <div class="col-4">
                             <label class="form-label small fw-semibold">Department</label>
                             <select name="department" class="form-select" required>
                                 <option value="Computer Science">Computer Science</option>
@@ -40,18 +40,33 @@
                                 <option value="Civil">Civil</option>
                             </select>
                         </div>
-                        <div class="col-6">
+                        <div class="col-4">
                             <label class="form-label small fw-semibold">Semester</label>
                             <select name="semester" class="form-select" required>
-                                <option value="1">Semester 1</option>
-                                <option value="2">Semester 2</option>
-                                <option value="3">Semester 3</option>
-                                <option value="4">Semester 4</option>
-                                <option value="5">Semester 5</option>
-                                <option value="6">Semester 6</option>
-                                <option value="7">Semester 7</option>
-                                <option value="8">Semester 8</option>
+                                {% for s in range(1, 9) %}
+                                <option value="Semester {{ s }}">Semester {{ s }}</option>
+                                {% endfor %}
                             </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small fw-semibold">Division</label>
+                            <select name="division" class="form-select" required>
+                                <option value="Division A">Division A</option>
+                                <option value="Division B">Division B</option>
+                                <option value="Division C">Division C</option>
+                                <option value="Division D">Division D</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Email Address</label>
+                            <input type="email" name="email" class="form-control" placeholder="student@university.edu">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Phone / WhatsApp</label>
+                            <input type="text" name="phone" class="form-control" placeholder="+91 9876543210">
                         </div>
                     </div>
 

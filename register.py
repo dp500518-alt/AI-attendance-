@@ -5,7 +5,7 @@ import database
 from camera import decode_base64_image
 from train import generate_embedding_for_student
 
-def register_new_student(student_id, roll_number, name, department, semester, sample_images_b64=None):
+def register_new_student(student_id, roll_number, name, department, semester, sample_images_b64=None, division='Division A', email='', phone=''):
     """
     Registers student in DB, creates dataset/<student_id>/ directory,
     saves captured face samples, and triggers face embedding generation.
@@ -15,6 +15,9 @@ def register_new_student(student_id, roll_number, name, department, semester, sa
     name = str(name).strip()
     department = str(department).strip()
     semester = str(semester).strip()
+    division = str(division).strip()
+    email = str(email).strip()
+    phone = str(phone).strip()
 
     if not student_id or not roll_number or not name:
         return False, "Student ID, Roll Number, and Name are required."
@@ -45,7 +48,7 @@ def register_new_student(student_id, roll_number, name, department, semester, sa
 
     # Add student entry to Database
     try:
-        database.add_student(student_id, roll_number, name, department, semester)
+        database.add_student(student_id, roll_number, name, department, semester, division, email, phone)
     except Exception as e:
         return False, f"Database insertion failed: {e}"
 

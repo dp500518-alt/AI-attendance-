@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}Analytics - Smart Attendance{% endblock %}
+{% block page_title %}Attendance Analytics & Insights{% endblock %}
+
+{% block content %}
+<!-- Filters Bar -->
+<div class="custom-card mb-4">
+    <div class="card-body-custom py-3">
+        <form method="GET" action="{{ url_for('analytics_dashboard') }}" class="row g-2 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold">Semester</label>
+                <select name="sem" class="form-select">
+                    <option value="">All Semesters</option>
+                    {% for s in range(1, 9) %}
+                    <option value="Semester {{ s }}" {% if sem_filter == 'Semester ' ~ s %}selected{% endif %}>Semester {{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold">Division</label>
+                <select name="div" class="form-select">
+                    <option value="">All Divisions</option>
+                    {% for d in ['Division A', 'Division B', 'Division C', 'Division D'] %}
+                    <option value="{{ d }}" {% if div_filter == d %}selected{% endif %}>{{ d }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold">Subject</label>
+                <input type="text" name="subject" class="form-control" placeholder="Search subject..." value="{{ subject_filter or '' }}">
+            </div>
+
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter"></i> Filter</button>
+                <a href="{{ url_for('analytics_dashboard') }}" class="btn btn-outline-secondary" title="Reset"><i class="bi bi-arrow-counterclockwise"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Charts Grid -->
+<div class="row g-4 mb-4">
+    <!-- Line Chart: Daily Attendance Trend -->
+    <div class="col-12 col-lg-8">
+        <div class="custom-card h-100 mb-0">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-graph-up-arrow text-primary"></i> Daily Attendance Trend (Line Chart)
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <canvas id="lineChart" height="240"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie Chart: Attendance Status Distribution -->
+    <div class="col-12 col-lg-4">
+        <div class="custom-card h-100 mb-0">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-pie-chart-fill text-success"></i> Status Distribution (Pie Chart)
+                </h5>
+            </div>
+            <div class="card-body-custom d-flex align-items-center justify-content-center">
+                <canvas id="pieChart" height="240"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Bar Chart: Subject-Wise Attendance -->
+    <div class="col-12 col-lg-7">
+        <div class="custom-card h-100 mb-0">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-bar-chart-fill text-info"></i> Subject-Wise Attendance (Bar Chart)
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <canvas id="barChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Heatmap Grid: Weekday Attendance Distribution -->
+    <div class="col-12 col-lg-5">
+        <div class="custom-card h-100 mb-0">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-grid-3x3-gap-fill text-warning"></i> Weekday Heatmap Distribution
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <div class="table-responsive">
+                    <table class="table table-bordered text-center align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Day</th>
+                                <th>Attendance Volume</th>
+                                <th>Heat Index</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for day, cnt in analytics.weekday_counts.items() %}
+                            <tr>
+                                <td class="fw-bold">{{ day }}</td>
+                                <td class="fw-semibold">{{ cnt }} Records</td>
+                                <td>
+                                    {% if cnt > 10 %}
+                                    <span class="badge bg-success p-2 w-100">High Volume</span>
+                                    {% elif cnt > 0 %}
+                                    <span class="badge bg-primary p-2 w-100">Medium Volume</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary p-2 w-100">No Lectures</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Low Attendance Warning Report Table -->
+<div class="custom-card">
+    <div class="card-header-custom">
+        <h5 class="card-title-custom text-danger">
+            <i class="bi bi-exclamation-triangle-fill"></i> Automatic Short Attendance Report (<50%)
+        </h5>
+        <a href="{{ url_for('download_report', format='pdf', type='short_attendance') }}" class="btn btn-sm btn-danger">
+            <i class="bi bi-file-earmark-pdf-fill me-1"></i> Export PDF Report
+        </a>
+    </div>
+    <div class="card-body-custom p-0">
+        <div class="table-responsive">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Roll No</th>
+                        <th>Name</th>
+                        <th>Department</th>
+                        <th>Sem & Div</th>
+                        <th>Attended Days</th>
+                        <th>Attendance %</th>
+                        <th>Status Flag</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if low_attendance_students %}
+                        {% for s in low_attendance_students %}
+                        <tr>
+                            <td><code>{{ s.id }}</code></td>
+                            <td>{{ s.roll_number }}</td>
+                            <td class="fw-bold">{{ s.name }}</td>
+                            <td>{{ s.department }}</td>
+                            <td>{{ s.semester }} {{ s.division }}</td>
+                            <td>{{ s.attended_days }} / {{ s.total_days }}</td>
+                            <td><span class="badge bg-danger fs-6">{{ s.attendance_pct }}%</span></td>
+                            <td><span class="badge bg-danger text-uppercase">Critical (<50%)</span></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-success py-4">
+                                <i class="bi bi-check-circle-fill fs-3 d-block mb-1"></i> No short attendance (<50%) flags detected!
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const trendLabels = {{ analytics.trend_labels|tojson }};
+    const trendValues = {{ analytics.trend_values|tojson }};
+    const barLabels = {{ analytics.bar_labels|tojson }};
+    const barValues = {{ analytics.bar_values|tojson }};
+    const pieLabels = {{ analytics.pie_labels|tojson }};
+    const pieValues = {{ analytics.pie_values|tojson }};
+
+    // 1. Line Chart
+    new Chart(document.getElementById('lineChart'), {
+        type: 'line',
+        data: {
+            labels: trendLabels.length ? trendLabels : ['No Data'],
+            datasets: [{
+                label: 'Attendance Count',
+                data: trendValues.length ? trendValues : [0],
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // 2. Pie Chart
+    new Chart(document.getElementById('pieChart'), {
+        type: 'doughnut',
+        data: {
+            labels: pieLabels,
+            datasets: [{
+                data: pieValues,
+                backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // 3. Bar Chart
+    new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: {
+            labels: barLabels.length ? barLabels : ['General'],
+            datasets: [{
+                label: 'Lectures Logged',
+                data: barValues.length ? barValues : [0],
+                backgroundColor: '#06b6d4'
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+});
+</script>
+{% endblock %}

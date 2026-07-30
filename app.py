@@ -2,23 +2,34 @@ import os
 import json
 import io
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, flash, session, Response, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, session, Response, send_file, jsonify
 import config
 import database
 import register
 import attendance
 import utils
+import ocr_timetable
+import analytics_reports
+import notifications
 from camera import camera_instance, decode_base64_image
 from train import train_all_students
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
 
-# Set Max Payload Limit to 100 MB to prevent "413 Request Entity Too Large" errors
+# Set Max Payload Limit to 100 MB
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 
 # Initialize database on app startup
 database.init_db()
+
+@app.context_processor
+def inject_global_data():
+    unread_count = 0
+    if session.get('user'):
+        notifs = database.get_notifications(target_user=session.get('user'), unread_only=True)
+        unread_count = len(notifs)
+    return dict(unread_notifications_count=unread_count)
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
@@ -50,6 +61,11 @@ def admin_required(f):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user' in session:
+        role = session.get('user_role', 'admin')
+        if role == 'student':
+            return redirect(url_for('student_dashboard'))
+        elif role == 'teacher':
+            return redirect(url_for('teacher_dashboard'))
         return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
@@ -63,6 +79,11 @@ def login():
             session['user_fullname'] = user.get('full_name') or user['username']
             session['user_dept'] = user.get('department') or ''
             flash(f"Welcome back, {session['user_fullname']}!", "success")
+
+            if session['user_role'] == 'student':
+                return redirect(url_for('student_dashboard'))
+            elif session['user_role'] == 'teacher':
+                return redirect(url_for('teacher_dashboard'))
             return redirect(url_for('dashboard'))
         else:
             flash("Invalid username or password.", "error")
@@ -75,10 +96,16 @@ def logout():
     flash("You have been logged out.", "info")
     return redirect(url_for('login'))
 
-# 2. Dashboard Route
+# 2. Portals (Student, Teacher, Admin Dashboards)
 @app.route('/')
 @login_required
 def dashboard():
+    role = session.get('user_role')
+    if role == 'student':
+        return redirect(url_for('student_dashboard'))
+    elif role == 'teacher':
+        return redirect(url_for('teacher_dashboard'))
+
     stats = database.get_dashboard_stats()
     today_attendance = database.get_attendance_today()
     all_embeddings = database.get_all_embeddings()
@@ -91,6 +118,45 @@ def dashboard():
                            embedded_count=len(all_embeddings),
                            threshold=threshold)
 
+@app.route('/student/dashboard')
+@login_required
+def student_dashboard():
+    username = session.get('user')
+    student = database.get_student_by_username(username)
+    
+    if not student:
+        # Fallback to first student or dummy object if not mapped
+        students = database.get_all_students()
+        student = students[0] if students else {'id': username, 'name': session.get('user_fullname'), 'semester': 'Semester 1', 'division': 'Division A', 'department': session.get('user_dept')}
+
+    summary = database.get_student_attendance_summary(student['id'])
+    timetable = database.get_timetable(semester=student.get('semester'), division=student.get('division'))
+    notifications_list = database.get_notifications(target_user=username)
+
+    return render_template('student_dashboard.html',
+                           active_page='student_dashboard',
+                           student=student,
+                           summary=summary,
+                           timetable=timetable,
+                           notifications=notifications_list)
+
+@app.route('/teacher/dashboard')
+@login_required
+def teacher_dashboard():
+    teacher_name = session.get('user')
+    stats = database.get_dashboard_stats()
+    my_timetable = database.get_timetable(teacher_username=teacher_name)
+    active_slot = database.get_active_timetable_slot()
+    low_attendance_students = database.get_short_attendance_students(threshold=50.0)
+
+    return render_template('teacher_dashboard.html',
+                           active_page='teacher_dashboard',
+                           stats=stats,
+                           my_timetable=my_timetable,
+                           active_slot=active_slot,
+                           low_attendance_students=low_attendance_students)
+
+
 # 3. Student Registration Route
 @app.route('/register', methods=['GET', 'POST'])
 @login_required
@@ -101,6 +167,9 @@ def register_student():
         name = request.form.get('name', '').strip()
         department = request.form.get('department', '').strip()
         semester = request.form.get('semester', '').strip()
+        division = request.form.get('division', 'Division A').strip()
+        email = request.form.get('email', '').strip()
+        phone = request.form.get('phone', '').strip()
         samples_json = request.form.get('samples_json', '')
 
         sample_images_b64 = []
@@ -111,7 +180,7 @@ def register_student():
                 print("Error parsing sample images JSON:", e)
 
         success, msg = register.register_new_student(
-            student_id, roll_number, name, department, semester, sample_images_b64
+            student_id, roll_number, name, department, semester, sample_images_b64, division, email, phone
         )
 
         if success:
@@ -308,7 +377,7 @@ def delete_teacher(user_id):
     flash("User account deleted successfully.", "info")
     return redirect(url_for('teacher_management'))
 
-# 9. Timetable Routes
+# 9. Timetable & OCR Reader Routes
 @app.route('/timetable', methods=['GET', 'POST'])
 @login_required
 def timetable_management():
@@ -320,6 +389,7 @@ def timetable_management():
         subject_name = request.form.get('subject_name', '').strip()
         department = request.form.get('department', '').strip()
         semester = request.form.get('semester', '').strip()
+        division = request.form.get('division', 'Division A').strip()
         day_of_week = request.form.get('day_of_week', '').strip()
         start_time = request.form.get('start_time', '').strip()
         end_time = request.form.get('end_time', '').strip()
@@ -328,22 +398,31 @@ def timetable_management():
         if not teacher_username or not subject_name or not day_of_week or not start_time or not end_time:
             flash("Please fill in all required timetable fields.", "error")
         else:
-            database.add_timetable_entry(teacher_username, subject_name, department, semester, day_of_week, start_time, end_time, room_number)
-            flash(f"Timetable slot for '{subject_name}' added successfully.", "success")
+            database.add_timetable_entry(teacher_username, subject_name, department, semester, day_of_week, start_time, end_time, room_number, division=division)
+            flash(f"Timetable slot for '{subject_name}' ({semester} {division}) added successfully.", "success")
         return redirect(url_for('timetable_management'))
 
     filter_teacher = request.args.get('teacher', '')
+    filter_sem = request.args.get('sem', '')
+    filter_div = request.args.get('div', '')
+
     if session.get('user_role') != 'admin':
         filter_teacher = session.get('user')
 
-    timetable_entries = database.get_timetable(teacher_username=filter_teacher if filter_teacher else None)
+    timetable_entries = database.get_timetable(
+        teacher_username=filter_teacher if filter_teacher else None,
+        semester=filter_sem if filter_sem else None,
+        division=filter_div if filter_div else None
+    )
     all_teachers = database.get_all_users()
 
     return render_template('timetable.html', 
                            active_page='timetable', 
                            timetable_entries=timetable_entries, 
                            all_teachers=all_teachers, 
-                           filter_teacher=filter_teacher)
+                           filter_teacher=filter_teacher,
+                           filter_sem=filter_sem,
+                           filter_div=filter_div)
 
 @app.route('/timetable/delete/<int:entry_id>', methods=['POST'])
 @login_required
@@ -352,7 +431,168 @@ def delete_timetable_entry(entry_id):
     flash("Timetable entry removed.", "info")
     return redirect(url_for('timetable_management'))
 
-# 10. Live Video Stream Route (MJPEG)
+@app.route('/timetable/ocr_upload', methods=['POST'])
+@login_required
+def ocr_upload_timetable():
+    if 'timetable_file' not in request.files:
+        flash("No timetable file provided.", "error")
+        return redirect(url_for('timetable_management'))
+
+    file = request.files['timetable_file']
+    if file.filename == '':
+        flash("No file selected.", "error")
+        return redirect(url_for('timetable_management'))
+
+    temp_path = os.path.join(config.CAPTURED_DIR, f"temp_tt_{file.filename}")
+    file.save(temp_path)
+
+    teacher_default = session.get('user', 'teacher')
+    dept_default = session.get('user_dept', 'Computer Science') or 'Computer Science'
+
+    success, msg, entries = ocr_timetable.extract_timetable_from_file(temp_path, teacher_default, dept_default)
+    
+    if os.path.exists(temp_path):
+        try:
+            os.remove(temp_path)
+        except Exception:
+            pass
+
+    if success:
+        return render_template('ocr_preview.html', active_page='timetable', entries=entries, msg=msg)
+    else:
+        flash(msg, "error")
+        return redirect(url_for('timetable_management'))
+
+@app.route('/timetable/save_ocr', methods=['POST'])
+@login_required
+def save_ocr_timetable():
+    ocr_json = request.form.get('ocr_entries_json', '[]')
+    try:
+        entries = json.loads(ocr_json)
+        count = 0
+        for item in entries:
+            database.add_timetable_entry(
+                teacher_username=item.get('teacher_username', session.get('user')),
+                subject_name=item.get('subject_name', 'Subject'),
+                department=item.get('department', 'Computer Science'),
+                semester=item.get('semester', 'Semester 1'),
+                day_of_week=item.get('day_of_week', 'Monday'),
+                start_time=item.get('start_time', '10:00'),
+                end_time=item.get('end_time', '11:00'),
+                room_number=item.get('room_number', 'Room 101'),
+                division=item.get('division', 'Division A')
+            )
+            count += 1
+        flash(f"Successfully saved {count} OCR extracted timetable slots to database!", "success")
+    except Exception as e:
+        flash(f"Failed to save OCR entries: {e}", "error")
+
+    return redirect(url_for('timetable_management'))
+
+# 10. Analytics & Reports Routes
+@app.route('/analytics')
+@login_required
+def analytics_dashboard():
+    sem_filter = request.args.get('sem', '')
+    div_filter = request.args.get('div', '')
+    subject_filter = request.args.get('subject', '')
+
+    analytics = analytics_reports.generate_analytics_data(sem=sem_filter or None, div=div_filter or None, subject=subject_filter or None)
+    low_attendance_students = database.get_short_attendance_students(threshold=50.0)
+
+    return render_template('analytics.html',
+                           active_page='analytics',
+                           analytics=analytics,
+                           low_attendance_students=low_attendance_students,
+                           sem_filter=sem_filter,
+                           div_filter=div_filter,
+                           subject_filter=subject_filter)
+
+@app.route('/reports/download')
+@login_required
+def download_report():
+    fmt = request.args.get('format', 'excel').lower()
+    report_type = request.args.get('type', 'history')
+    date_filter = request.args.get('date', '').strip() or None
+    dept_filter = request.args.get('dept', '').strip() or None
+    sem_filter = request.args.get('sem', '').strip() or None
+    div_filter = request.args.get('div', '').strip() or None
+    subject_filter = request.args.get('subject', '').strip() or None
+
+    if report_type == 'short_attendance':
+        low_students = database.get_short_attendance_students(threshold=50.0)
+        records = []
+        for s in low_students:
+            records.append({
+                'date': 'Overall',
+                'time': f"{s['attendance_pct']}%",
+                'student_id': s['id'],
+                'roll_number': s['roll_number'],
+                'name': s['name'],
+                'department': s['department'],
+                'semester': s['semester'],
+                'division': s['division'],
+                'status': 'Critical (<50%)'
+            })
+        title = "Short_Attendance_Report"
+    else:
+        records = database.get_attendance_history(date_filter=date_filter, dept_filter=dept_filter, sem_filter=sem_filter, div_filter=div_filter, subject_filter=subject_filter)
+        title = "Attendance_Summary_Report"
+
+    if fmt == 'pdf':
+        pdf_bytes = analytics_reports.export_pdf_report(records, title=title)
+        return Response(
+            pdf_bytes,
+            mimetype="application/pdf",
+            headers={"Content-disposition": f"attachment; filename={title}.pdf"}
+        )
+    else:
+        excel_bytes = analytics_reports.export_excel_report(records, title=title)
+        return Response(
+            excel_bytes,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-disposition": f"attachment; filename={title}.xlsx"}
+        )
+
+# 11. Subjects Routes
+@app.route('/subjects', methods=['GET', 'POST'])
+@login_required
+def subject_management():
+    if request.method == 'POST':
+        code = request.form.get('code', '').strip()
+        name = request.form.get('name', '').strip()
+        department = request.form.get('department', '').strip()
+        semester = request.form.get('semester', '').strip()
+
+        if not name or not department or not semester:
+            flash("Subject Name, Department, and Semester are required.", "error")
+        else:
+            success, msg = database.add_subject(code, name, department, semester)
+            if success:
+                flash(f"Subject '{name}' added successfully.", "success")
+            else:
+                flash(f"Failed to add subject: {msg}", "error")
+
+        return redirect(url_for('subject_management'))
+
+    subjects = database.get_all_subjects()
+    return render_template('subjects.html', active_page='subjects', subjects=subjects)
+
+@app.route('/subjects/delete/<int:subject_id>', methods=['POST'])
+@login_required
+def delete_subject(subject_id):
+    database.delete_subject(subject_id)
+    flash("Subject deleted successfully.", "info")
+    return redirect(url_for('subject_management'))
+
+# 12. Notifications Routes
+@app.route('/notifications/read/<int:notif_id>', methods=['POST'])
+@login_required
+def read_notification(notif_id):
+    database.mark_notification_read(notif_id)
+    return jsonify({'status': 'ok'})
+
+# 13. Live Video Stream Route (MJPEG)
 @app.route('/video_feed')
 @login_required
 def video_feed():
@@ -362,3 +602,4 @@ def video_feed():
 if __name__ == '__main__':
     print("Starting AI Smart Attendance System on http://127.0.0.1:5000 ...")
     app.run(host='0.0.0.0', port=5000, debug=True)
+

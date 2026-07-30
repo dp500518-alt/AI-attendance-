@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Student Portal - Smart Attendance{% endblock %}
+{% block page_title %}Student Overview{% endblock %}
+
+{% block content %}
+<!-- Student Info Header -->
+<div class="custom-card p-4 mb-4">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="stat-icon-wrapper bg-primary-subtle text-primary rounded-circle" style="width: 60px; height: 60px; font-size: 1.75rem;">
+                <i class="bi bi-person-fill"></i>
+            </div>
+            <div>
+                <h4 class="fw-bold mb-1">{{ student.name }}</h4>
+                <div class="text-muted small">
+                    Roll No: <strong>{{ student.roll_number }}</strong> | ID: <code>{{ student.id }}</code> | {{ student.department }} ({{ student.semester }} - {{ student.division or 'Division A' }})
+                </div>
+            </div>
+        </div>
+        <div>
+            <a href="{{ url_for('download_report', format='pdf', type='student') }}" class="btn btn-outline-primary me-2">
+                <i class="bi bi-file-earmark-pdf-fill me-1"></i> Download PDF Report
+            </a>
+            <a href="{{ url_for('download_report', format='excel', type='student') }}" class="btn btn-outline-success">
+                <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Download Excel
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Metric Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-4">
+        <div class="stat-card stat-primary">
+            <div>
+                <div class="stat-label">Total Lectures Attended</div>
+                <div class="stat-value">{{ summary.total_attended }}</div>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-check2-square"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-4">
+        <div class="stat-card stat-info">
+            <div>
+                <div class="stat-label">Enrolled Semester</div>
+                <div class="stat-value fs-4">{{ student.semester }}</div>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-journal-bookmark"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-4">
+        <div class="stat-card stat-warning">
+            <div>
+                <div class="stat-label">Division</div>
+                <div class="stat-value fs-4">{{ student.division or 'Division A' }}</div>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-diagram-3"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Subject Attendance Breakdown -->
+    <div class="col-12 col-lg-7">
+        <div class="custom-card h-100 mb-0">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-journal-check text-primary"></i> Subject Attendance Breakdown
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                {% if summary.by_subject %}
+                    {% for item in summary.by_subject %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-semibold">{{ item.subject_name or 'General' }}</span>
+                            <span class="badge bg-primary-subtle text-primary">{{ item.count }} Lectures</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted py-4">No subject attendance records logged yet.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications & Notices -->
+    <div class="col-12 col-lg-5">
+        <div class="custom-card h-100 mb-0">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-bell-fill text-warning"></i> Notifications & Warnings
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                {% if notifications %}
+                    <ul class="list-group list-group-flush">
+                        {% for n in notifications %}
+                        <li class="list-group-item bg-transparent px-0">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="fw-semibold text-danger">{{ n.title }}</div>
+                                    <small class="text-muted d-block">{{ n.message }}</small>
+                                </div>
+                                <small class="text-muted ms-2">{{ n.created_at[:10] }}</small>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-center text-muted py-4">No warnings or notices for your account. Keep up good attendance!</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Personal Timetable View -->
+<div class="custom-card mt-4">
+    <div class="card-header-custom">
+        <h5 class="card-title-custom">
+            <i class="bi bi-calendar-week-fill text-success"></i> My Weekly Timetable ({{ student.semester }} - {{ student.division or 'Division A' }})
+        </h5>
+    </div>
+    <div class="card-body-custom p-0">
+        <div class="table-responsive">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Time Slot</th>
+                        <th>Subject</th>
+                        <th>Faculty</th>
+                        <th>Room</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if timetable %}
+                        {% for t in timetable %}
+                        <tr>
+                            <td class="fw-semibold text-primary">{{ t.day_of_week }}</td>
+                            <td><i class="bi bi-clock me-1 text-muted"></i> {{ t.start_time }} - {{ t.end_time }}</td>
+                            <td class="fw-bold">{{ t.subject_name }}</td>
+                            <td>{{ t.teacher_name or t.teacher_username }}</td>
+                            <td><span class="badge bg-secondary-subtle text-body">{{ t.room_number or 'TBD' }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">No timetable entries set for your semester & division yet.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

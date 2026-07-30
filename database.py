@@ -25,6 +25,9 @@ def init_db():
         name TEXT NOT NULL,
         department TEXT NOT NULL,
         semester TEXT NOT NULL,
+        division TEXT NOT NULL DEFAULT 'Division A',
+        email TEXT,
+        phone TEXT,
         created_at TEXT NOT NULL
     );
     """)
@@ -44,15 +47,19 @@ def init_db():
     CREATE TABLE IF NOT EXISTS Attendance (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         student_id TEXT NOT NULL,
+        timetable_id INTEGER,
+        subject_name TEXT,
+        semester TEXT,
+        division TEXT,
         date TEXT NOT NULL,
         time TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'Present',
-        UNIQUE(student_id, date),
+        UNIQUE(student_id, date, timetable_id),
         FOREIGN KEY(student_id) REFERENCES Students(id) ON DELETE CASCADE
     );
     """)
 
-    # Admin & Teacher Users table
+    # Admin, Teacher, Student Users table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS Users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,6 +82,16 @@ def init_db():
     if 'role' not in user_columns:
         cursor.execute("ALTER TABLE Users ADD COLUMN role TEXT NOT NULL DEFAULT 'teacher';")
 
+    # Check and add missing columns to Students
+    cursor.execute("PRAGMA table_info(Students);")
+    student_cols = [col['name'] for col in cursor.fetchall()]
+    if 'division' not in student_cols:
+        cursor.execute("ALTER TABLE Students ADD COLUMN division TEXT NOT NULL DEFAULT 'Division A';")
+    if 'email' not in student_cols:
+        cursor.execute("ALTER TABLE Students ADD COLUMN email TEXT;")
+    if 'phone' not in student_cols:
+        cursor.execute("ALTER TABLE Students ADD COLUMN phone TEXT;")
+
     # Timetable table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS Timetable (
@@ -83,12 +100,54 @@ def init_db():
         subject_name TEXT NOT NULL,
         department TEXT NOT NULL,
         semester TEXT NOT NULL,
+        division TEXT NOT NULL DEFAULT 'Division A',
         day_of_week TEXT NOT NULL,
         start_time TEXT NOT NULL,
         end_time TEXT NOT NULL,
         room_number TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY(teacher_username) REFERENCES Users(username) ON DELETE CASCADE
+    );
+    """)
+
+    cursor.execute("PRAGMA table_info(Timetable);")
+    tt_cols = [col['name'] for col in cursor.fetchall()]
+    if 'division' not in tt_cols:
+        cursor.execute("ALTER TABLE Timetable ADD COLUMN division TEXT NOT NULL DEFAULT 'Division A';")
+
+    # Check and add missing columns to Attendance
+    cursor.execute("PRAGMA table_info(Attendance);")
+    att_cols = [col['name'] for col in cursor.fetchall()]
+    if 'timetable_id' not in att_cols:
+        cursor.execute("ALTER TABLE Attendance ADD COLUMN timetable_id INTEGER;")
+    if 'subject_name' not in att_cols:
+        cursor.execute("ALTER TABLE Attendance ADD COLUMN subject_name TEXT;")
+    if 'semester' not in att_cols:
+        cursor.execute("ALTER TABLE Attendance ADD COLUMN semester TEXT;")
+    if 'division' not in att_cols:
+        cursor.execute("ALTER TABLE Attendance ADD COLUMN division TEXT;")
+
+    # Notifications Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS Notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        target_user TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        channel TEXT NOT NULL DEFAULT 'website',
+        is_read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+    );
+    """)
+
+    # Subjects Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS Subjects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT,
+        name TEXT NOT NULL,
+        department TEXT NOT NULL,
+        semester TEXT NOT NULL
     );
     """)
 
@@ -151,14 +210,14 @@ def change_admin_password(username, new_password):
     conn.close()
 
 # Student Functions
-def add_student(student_id, roll_number, name, department, semester):
+def add_student(student_id, roll_number, name, department, semester, division='Division A', email='', phone=''):
     conn = get_connection()
     cursor = conn.cursor()
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("""
-    INSERT INTO Students (id, roll_number, name, department, semester, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-    """, (student_id.strip(), roll_number.strip(), name.strip(), department.strip(), semester.strip(), now_str))
+    INSERT INTO Students (id, roll_number, name, department, semester, division, email, phone, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (student_id.strip(), roll_number.strip(), name.strip(), department.strip(), semester.strip(), division.strip(), email.strip(), phone.strip(), now_str))
     conn.commit()
     conn.close()
 
@@ -170,10 +229,38 @@ def get_all_students():
     conn.close()
     return [dict(r) for r in rows]
 
+def get_students_by_sem_div(semester=None, division=None, department=None):
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = "SELECT * FROM Students WHERE 1=1"
+    params = []
+    if semester:
+        query += " AND semester = ?"
+        params.append(semester)
+    if division:
+        query += " AND division = ?"
+        params.append(division)
+    if department:
+        query += " AND department = ?"
+        params.append(department)
+    query += " ORDER BY roll_number ASC"
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
 def get_student(student_id):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM Students WHERE id = ?", (student_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_student_by_username(username):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Students WHERE id = ? OR roll_number = ? OR name LIKE ?", (username, username, f"%{username}%"))
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
@@ -222,7 +309,7 @@ def get_all_embeddings():
     return embeddings_map
 
 # Attendance Functions
-def mark_attendance(student_id, status='Present', date_str=None, time_str=None):
+def mark_attendance(student_id, status='Present', date_str=None, time_str=None, timetable_id=None, subject_name=None, semester=None, division=None):
     now = datetime.datetime.now()
     if not date_str:
         date_str = now.strftime("%Y-%m-%d")
@@ -233,13 +320,14 @@ def mark_attendance(student_id, status='Present', date_str=None, time_str=None):
     cursor = conn.cursor()
     try:
         cursor.execute("""
-        INSERT INTO Attendance (student_id, date, time, status)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(student_id, date) DO NOTHING
-        """, (student_id, date_str, time_str, status))
+        INSERT INTO Attendance (student_id, date, time, status, timetable_id, subject_name, semester, division)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(student_id, date, timetable_id) DO NOTHING
+        """, (student_id, date_str, time_str, status, timetable_id, subject_name, semester, division))
         conn.commit()
         inserted = cursor.rowcount > 0
-    except sqlite3.Error:
+    except sqlite3.Error as e:
+        print("Mark attendance error:", e)
         inserted = False
     finally:
         conn.close()
@@ -254,7 +342,11 @@ def get_attendance_by_date(date_str):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT a.id, a.student_id, s.name, s.roll_number, s.department, s.semester, a.date, a.time, a.status
+    SELECT a.id, a.student_id, s.name, s.roll_number, s.department, 
+           COALESCE(a.semester, s.semester) as semester, 
+           COALESCE(a.division, s.division) as division,
+           COALESCE(a.subject_name, 'General') as subject_name,
+           a.date, a.time, a.status
     FROM Attendance a
     JOIN Students s ON a.student_id = s.id
     WHERE a.date = ?
@@ -264,12 +356,16 @@ def get_attendance_by_date(date_str):
     conn.close()
     return [dict(r) for r in rows]
 
-def get_attendance_history(date_filter=None, dept_filter=None, search_term=None):
+def get_attendance_history(date_filter=None, dept_filter=None, sem_filter=None, div_filter=None, subject_filter=None, search_term=None):
     conn = get_connection()
     cursor = conn.cursor()
 
     query = """
-    SELECT a.id, a.student_id, s.name, s.roll_number, s.department, s.semester, a.date, a.time, a.status
+    SELECT a.id, a.student_id, s.name, s.roll_number, s.department, 
+           COALESCE(a.semester, s.semester) as semester, 
+           COALESCE(a.division, s.division) as division,
+           COALESCE(a.subject_name, 'General') as subject_name,
+           a.date, a.time, a.status
     FROM Attendance a
     JOIN Students s ON a.student_id = s.id
     WHERE 1=1
@@ -282,6 +378,15 @@ def get_attendance_history(date_filter=None, dept_filter=None, search_term=None)
     if dept_filter:
         query += " AND s.department = ?"
         params.append(dept_filter)
+    if sem_filter:
+        query += " AND (a.semester = ? OR s.semester = ?)"
+        params.extend([sem_filter, sem_filter])
+    if div_filter:
+        query += " AND (a.division = ? OR s.division = ?)"
+        params.extend([div_filter, div_filter])
+    if subject_filter:
+        query += " AND a.subject_name LIKE ?"
+        params.append(f"%{subject_filter}%")
     if search_term:
         query += " AND (s.name LIKE ? OR s.roll_number LIKE ? OR a.student_id LIKE ?)"
         term = f"%{search_term}%"
@@ -292,6 +397,60 @@ def get_attendance_history(date_filter=None, dept_filter=None, search_term=None)
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+def get_student_attendance_summary(student_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*) as total FROM Attendance WHERE student_id = ?", (student_id,))
+    total_attended = cursor.fetchone()['total']
+
+    cursor.execute("""
+    SELECT subject_name, COUNT(*) as count 
+    FROM Attendance 
+    WHERE student_id = ? 
+    GROUP BY subject_name
+    """, (student_id,))
+    by_subject = [dict(r) for r in cursor.fetchall()]
+
+    conn.close()
+    return {
+        'total_attended': total_attended,
+        'by_subject': by_subject
+    }
+
+def get_short_attendance_students(threshold=50.0):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id, roll_number, name, department, semester, division, email, phone FROM Students")
+    students = [dict(r) for r in cursor.fetchall()]
+
+    cursor.execute("SELECT DISTINCT date FROM Attendance")
+    total_conducted = len(cursor.fetchall()) or 1
+
+    low_attendance = []
+    for s in students:
+        cursor.execute("SELECT COUNT(DISTINCT date) as attended FROM Attendance WHERE student_id = ?", (s['id'],))
+        attended = cursor.fetchone()['attended']
+        pct = round((attended / total_conducted) * 100, 1)
+
+        status_flag = "Good"
+        if pct < 50.0:
+            status_flag = "Critical"
+        elif pct <= 75.0:
+            status_flag = "Warning"
+
+        s['attended_days'] = attended
+        s['total_days'] = total_conducted
+        s['attendance_pct'] = pct
+        s['status_flag'] = status_flag
+
+        if pct < threshold:
+            low_attendance.append(s)
+
+    conn.close()
+    return low_attendance
 
 def get_dashboard_stats():
     conn = get_connection()
@@ -308,14 +467,85 @@ def get_dashboard_stats():
     absent_today = max(0, total_students - present_today)
     attendance_pct = round((present_today / total_students * 100), 1) if total_students > 0 else 0.0
 
+    low_students = get_short_attendance_students(threshold=50.0)
+
     conn.close()
     return {
         'total_students': total_students,
         'present_today': present_today,
         'absent_today': absent_today,
         'attendance_pct': attendance_pct,
+        'low_attendance_count': len(low_students),
         'today_date': today
     }
+
+# Notifications Functions
+def create_notification(target_user, title, message, channel='website'):
+    conn = get_connection()
+    cursor = conn.cursor()
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("""
+    INSERT INTO Notifications (target_user, title, message, channel, is_read, created_at)
+    VALUES (?, ?, ?, ?, 0, ?)
+    """, (target_user.strip(), title.strip(), message.strip(), channel.strip(), now_str))
+    conn.commit()
+    conn.close()
+
+def get_notifications(target_user=None, unread_only=False):
+    conn = get_connection()
+    cursor = conn.cursor()
+    query = "SELECT * FROM Notifications WHERE 1=1"
+    params = []
+
+    if target_user:
+        query += " AND (target_user = ? OR target_user = 'all')"
+        params.append(target_user)
+    if unread_only:
+        query += " AND is_read = 0"
+
+    query += " ORDER BY created_at DESC LIMIT 50"
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def mark_notification_read(notif_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE Notifications SET is_read = 1 WHERE id = ?", (notif_id,))
+    conn.commit()
+    conn.close()
+
+# Subjects Functions
+def get_all_subjects():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Subjects ORDER BY department ASC, semester ASC, name ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def add_subject(code, name, department, semester):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+        INSERT INTO Subjects (code, name, department, semester)
+        VALUES (?, ?, ?, ?)
+        """, (code.strip(), name.strip(), department.strip(), semester.strip()))
+        conn.commit()
+        conn.close()
+        return True, "Subject added successfully."
+    except Exception as e:
+        conn.close()
+        return False, str(e)
+
+def delete_subject(subject_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM Subjects WHERE id = ?", (subject_id,))
+    conn.commit()
+    conn.close()
 
 # System Settings Functions
 def get_setting(key, default_val=None):
@@ -380,55 +610,81 @@ def delete_user(user_id):
     conn.commit()
     conn.close()
 
-# Timetable Functions
-def get_timetable(teacher_username=None):
+# Timetable & Intelligent Detection Functions
+def get_timetable(teacher_username=None, semester=None, division=None, day_of_week=None):
     conn = get_connection()
     cursor = conn.cursor()
+
+    query = """
+    SELECT t.*, u.full_name as teacher_name 
+    FROM Timetable t
+    LEFT JOIN Users u ON t.teacher_username = u.username
+    WHERE 1=1
+    """
+    params = []
+
     if teacher_username:
-        cursor.execute("""
-        SELECT t.*, u.full_name as teacher_name 
-        FROM Timetable t
-        LEFT JOIN Users u ON t.teacher_username = u.username
-        WHERE t.teacher_username = ?
-        ORDER BY CASE t.day_of_week
-            WHEN 'Monday' THEN 1
-            WHEN 'Tuesday' THEN 2
-            WHEN 'Wednesday' THEN 3
-            WHEN 'Thursday' THEN 4
-            WHEN 'Friday' THEN 5
-            WHEN 'Saturday' THEN 6
-            WHEN 'Sunday' THEN 7
-            ELSE 8
-        END, t.start_time ASC
-        """, (teacher_username,))
-    else:
-        cursor.execute("""
-        SELECT t.*, u.full_name as teacher_name 
-        FROM Timetable t
-        LEFT JOIN Users u ON t.teacher_username = u.username
-        ORDER BY CASE t.day_of_week
-            WHEN 'Monday' THEN 1
-            WHEN 'Tuesday' THEN 2
-            WHEN 'Wednesday' THEN 3
-            WHEN 'Thursday' THEN 4
-            WHEN 'Friday' THEN 5
-            WHEN 'Saturday' THEN 6
-            WHEN 'Sunday' THEN 7
-            ELSE 8
-        END, t.start_time ASC
-        """)
+        query += " AND t.teacher_username = ?"
+        params.append(teacher_username)
+    if semester:
+        query += " AND t.semester = ?"
+        params.append(semester)
+    if division:
+        query += " AND t.division = ?"
+        params.append(division)
+    if day_of_week:
+        query += " AND t.day_of_week = ?"
+        params.append(day_of_week)
+
+    query += """
+    ORDER BY CASE t.day_of_week
+        WHEN 'Monday' THEN 1
+        WHEN 'Tuesday' THEN 2
+        WHEN 'Wednesday' THEN 3
+        WHEN 'Thursday' THEN 4
+        WHEN 'Friday' THEN 5
+        WHEN 'Saturday' THEN 6
+        WHEN 'Sunday' THEN 7
+        ELSE 8
+    END, t.start_time ASC
+    """
+
+    cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
-def add_timetable_entry(teacher_username, subject_name, department, semester, day_of_week, start_time, end_time, room_number=''):
+def get_active_timetable_slot(day_of_week=None, time_str=None):
+    now = datetime.datetime.now()
+    if not day_of_week:
+        day_of_week = now.strftime("%A")
+    if not time_str:
+        time_str = now.strftime("%H:%M")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT t.*, u.full_name as teacher_name 
+    FROM Timetable t
+    LEFT JOIN Users u ON t.teacher_username = u.username
+    WHERE t.day_of_week = ? AND t.start_time <= ? AND t.end_time >= ?
+    ORDER BY t.start_time ASC
+    LIMIT 1
+    """, (day_of_week, time_str, time_str))
+
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def add_timetable_entry(teacher_username, subject_name, department, semester, day_of_week, start_time, end_time, room_number='', division='Division A'):
     conn = get_connection()
     cursor = conn.cursor()
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("""
-    INSERT INTO Timetable (teacher_username, subject_name, department, semester, day_of_week, start_time, end_time, room_number, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (teacher_username.strip(), subject_name.strip(), department.strip(), semester.strip(), day_of_week.strip(), start_time.strip(), end_time.strip(), room_number.strip(), now_str))
+    INSERT INTO Timetable (teacher_username, subject_name, department, semester, division, day_of_week, start_time, end_time, room_number, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (teacher_username.strip(), subject_name.strip(), department.strip(), semester.strip(), division.strip(), day_of_week.strip(), start_time.strip(), end_time.strip(), room_number.strip(), now_str))
     conn.commit()
     conn.close()
 
@@ -438,4 +694,5 @@ def delete_timetable_entry(entry_id):
     cursor.execute("DELETE FROM Timetable WHERE id = ?", (entry_id,))
     conn.commit()
     conn.close()
+
 

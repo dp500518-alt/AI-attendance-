@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}OCR Timetable Review - Smart Attendance{% endblock %}
+{% block page_title %}AI OCR Timetable Verification{% endblock %}
+
+{% block content %}
+<div class="custom-card">
+    <div class="card-header-custom flex-wrap gap-2">
+        <div>
+            <h5 class="card-title-custom mb-1">
+                <i class="bi bi-cpu-fill text-primary"></i> Extracted Timetable Grid
+            </h5>
+            <small class="text-muted">Review and make any necessary corrections before saving into database.</small>
+        </div>
+        <div>
+            <button type="button" class="btn btn-success fw-semibold" id="confirmSaveBtn">
+                <i class="bi bi-check-circle-fill me-1"></i> Save to Database
+            </button>
+            <a href="{{ url_for('timetable_management') }}" class="btn btn-outline-secondary ms-1">Cancel</a>
+        </div>
+    </div>
+    <div class="card-body-custom">
+        <form id="ocrSaveForm" method="POST" action="{{ url_for('save_ocr_timetable') }}">
+            <input type="hidden" name="ocr_entries_json" id="ocrJsonInput">
+
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle" id="ocrReviewTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Day</th>
+                            <th>Start Time</th>
+                            <th>End Time</th>
+                            <th>Subject Name</th>
+                            <th>Semester</th>
+                            <th>Division</th>
+                            <th>Room No</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in entries %}
+                        <tr>
+                            <td>
+                                <select class="form-select form-select-sm cell-day">
+                                    {% for d in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                                    <option value="{{ d }}" {% if entry.day_of_week == d %}selected{% endif %}>{{ d }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input type="time" class="form-control form-control-sm cell-start" value="{{ entry.start_time }}"></td>
+                            <td><input type="time" class="form-control form-control-sm cell-end" value="{{ entry.end_time }}"></td>
+                            <td><input type="text" class="form-control form-control-sm cell-subject" value="{{ entry.subject_name }}"></td>
+                            <td>
+                                <select class="form-select form-select-sm cell-sem">
+                                    {% for s in range(1, 9) %}
+                                    <option value="Semester {{ s }}" {% if 'Semester ' ~ s in entry.semester or 'Sem ' ~ s in entry.semester %}selected{% endif %}>Semester {{ s }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm cell-div">
+                                    {% for d in ['Division A', 'Division B', 'Division C', 'Division D'] %}
+                                    <option value="{{ d }}" {% if d in entry.division %}selected{% endif %}>{{ d }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input type="text" class="form-control form-control-sm cell-room" value="{{ entry.room_number }}"></td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-outline-danger btn-sm delete-row-btn"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const tableBody = document.querySelector('#ocrReviewTable tbody');
+    const confirmBtn = document.getElementById('confirmSaveBtn');
+    const jsonInput = document.getElementById('ocrJsonInput');
+    const form = document.getElementById('ocrSaveForm');
+
+    tableBody.addEventListener('click', (e) => {
+        if (e.target.closest('.delete-row-btn')) {
+            e.target.closest('tr').remove();
+        }
+    });
+
+    confirmBtn.addEventListener('click', () => {
+        const rows = tableBody.querySelectorAll('tr');
+        const entries = [];
+
+        rows.forEach(row => {
+            entries.append({
+                day_of_week: row.querySelector('.cell-day').value,
+                start_time: row.querySelector('.cell-start').value,
+                end_time: row.querySelector('.cell-end').value,
+                subject_name: row.querySelector('.cell-subject').value,
+                semester: row.querySelector('.cell-sem').value,
+                division: row.querySelector('.cell-div').value,
+                room_number: row.querySelector('.cell-room').value
+            });
+        });
+
+        jsonInput.value = JSON.stringify(entries);
+        form.submit();
+    });
+});
+</script>
+{% endblock %}

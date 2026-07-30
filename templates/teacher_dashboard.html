@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Teacher Portal - Smart Attendance{% endblock %}
+{% block page_title %}Faculty Dashboard{% endblock %}
+
+{% block content %}
+<!-- Active Lecture Detection Banner -->
+<div class="alert {% if active_slot %}alert-success{% else %}alert-secondary{% endif %} border-0 shadow-sm p-4 mb-4" role="alert">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div>
+            {% if active_slot %}
+            <h5 class="fw-bold alert-heading mb-1">
+                <i class="bi bi-broadcast me-2"></i> Active Lecture Auto-Detected: {{ active_slot.subject_name }}
+            </h5>
+            <div class="small">
+                <strong>{{ active_slot.day_of_week }}</strong> ({{ active_slot.start_time }} - {{ active_slot.end_time }}) |
+                Semester: <strong>{{ active_slot.semester }}</strong> | Division: <strong>{{ active_slot.division }}</strong> | Room: <strong>{{ active_slot.room_number }}</strong>
+            </div>
+            {% else %}
+            <h5 class="fw-bold alert-heading mb-1">
+                <i class="bi bi-clock-history me-2"></i> No Active Lecture Slot Right Now
+            </h5>
+            <div class="small text-muted">You can still take classroom photos or upload timetables anytime.</div>
+            {% endif %}
+        </div>
+        <div>
+            <a href="{{ url_for('classroom_attendance') }}" class="btn btn-primary fw-semibold">
+                <i class="bi bi-camera-fill me-1"></i> Capture Classroom Photo
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Teacher Quick Metric Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stat-primary">
+            <div>
+                <div class="stat-label">Total Enrolled Students</div>
+                <div class="stat-value">{{ stats.total_students }}</div>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-people-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stat-success">
+            <div>
+                <div class="stat-label">Present Today</div>
+                <div class="stat-value">{{ stats.present_today }}</div>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-check-circle-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stat-warning">
+            <div>
+                <div class="stat-label">Absent Today</div>
+                <div class="stat-value">{{ stats.absent_today }}</div>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-x-circle-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stat-info">
+            <div>
+                <div class="stat-label">Low Attendance (<50%)</div>
+                <div class="stat-value text-danger">{{ low_attendance_students|length }}</div>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Faculty Weekly Timetable -->
+    <div class="col-12 col-lg-7">
+        <div class="custom-card h-100 mb-0">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-calendar3 text-primary"></i> My Scheduled Timetable
+                </h5>
+                <a href="{{ url_for('timetable_management') }}" class="btn btn-sm btn-outline-primary">Manage & OCR Upload</a>
+            </div>
+            <div class="card-body-custom p-0">
+                <div class="table-responsive">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Time</th>
+                                <th>Subject</th>
+                                <th>Sem / Div</th>
+                                <th>Room</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if my_timetable %}
+                                {% for slot in my_timetable %}
+                                <tr>
+                                    <td class="fw-semibold text-primary">{{ slot.day_of_week }}</td>
+                                    <td>{{ slot.start_time }} - {{ slot.end_time }}</td>
+                                    <td class="fw-bold">{{ slot.subject_name }}</td>
+                                    <td><span class="badge bg-primary-subtle text-primary">{{ slot.semester }} {{ slot.division }}</span></td>
+                                    <td>{{ slot.room_number or 'TBD' }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">No timetable entries registered yet. Use OCR Upload to import your timetable!</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flagged Short Attendance Students -->
+    <div class="col-12 col-lg-5">
+        <div class="custom-card h-100 mb-0">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom text-danger">
+                    <i class="bi bi-exclamation-circle-fill"></i> Flagged Short Attendance (<50%)
+                </h5>
+                <a href="{{ url_for('download_report', format='pdf', type='short_attendance') }}" class="btn btn-sm btn-outline-danger">Export PDF</a>
+            </div>
+            <div class="card-body-custom p-0">
+                <div class="table-responsive">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Sem / Div</th>
+                                <th>Attendance %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if low_attendance_students %}
+                                {% for s in low_attendance_students %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold">{{ s.name }}</div>
+                                        <small class="text-muted">Roll: {{ s.roll_number }}</small>
+                                    </td>
+                                    <td><small>{{ s.semester }} {{ s.division }}</small></td>
+                                    <td><span class="badge bg-danger">{{ s.attendance_pct }}%</span></td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-success py-4">
+                                        <i class="bi bi-check-circle-fill fs-3 d-block mb-2"></i> All students have good attendance (>50%)!
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,29 +1,48 @@
 {% extends "base.html" %}
 
 {% block title %}Class Timetable - Smart Attendance{% endblock %}
-{% block page_title %}Faculty Class Timetable{% endblock %}
+{% block page_title %}Classroom Timetable & OCR Reader{% endblock %}
 
 {% block content %}
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
     <div>
-        <h4 class="fw-bold mb-1"><i class="bi bi-calendar3 me-2 text-primary"></i>Weekly Schedule</h4>
-        <p class="text-muted small mb-0">Manage teacher schedules, subjects, class timings, and venues.</p>
+        <h4 class="fw-bold mb-1"><i class="bi bi-calendar3 me-2 text-primary"></i>Weekly Schedule Grid</h4>
+        <p class="text-muted small mb-0">Upload PDF/Excel/Image timetables via AI OCR or manage class slots manually.</p>
     </div>
-    <div class="d-flex gap-2">
-        {% if session.get('user_role') == 'admin' %}
+    <div class="d-flex flex-wrap gap-2">
         <form method="GET" action="{{ url_for('timetable_management') }}" class="d-flex align-items-center gap-2">
+            {% if session.get('user_role') == 'admin' %}
             <select name="teacher" class="form-select form-select-sm rounded-3" onchange="this.form.submit()">
                 <option value="">All Teachers</option>
                 {% for t in all_teachers %}
                 <option value="{{ t.username }}" {% if filter_teacher == t.username %}selected{% endif %}>
-                    {{ t.full_name or t.username }} ({{ t.department or 'N/A' }})
+                    {{ t.full_name or t.username }}
                 </option>
                 {% endfor %}
             </select>
+            {% endif %}
+
+            <select name="sem" class="form-select form-select-sm rounded-3" onchange="this.form.submit()">
+                <option value="">All Semesters</option>
+                {% for s in range(1, 9) %}
+                <option value="Semester {{ s }}" {% if filter_sem == 'Semester ' ~ s %}selected{% endif %}>Semester {{ s }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="div" class="form-select form-select-sm rounded-3" onchange="this.form.submit()">
+                <option value="">All Divisions</option>
+                {% for d in ['Division A', 'Division B', 'Division C', 'Division D'] %}
+                <option value="{{ d }}" {% if filter_div == d %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
         </form>
-        {% endif %}
+
+        <button class="btn btn-outline-primary rounded-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#ocrUploadModal">
+            <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> AI OCR Upload
+        </button>
+
         <button class="btn btn-primary rounded-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#addTimetableModal">
-            <i class="bi bi-plus-circle-fill me-2"></i>Add Schedule Slot
+            <i class="bi bi-plus-circle-fill me-1"></i> Add Schedule Slot
         </button>
     </div>
 </div>
@@ -58,7 +77,7 @@
                             <div class="d-flex flex-wrap gap-2 mb-2">
                                 <span class="badge bg-primary-subtle text-primary border"><i class="bi bi-clock me-1"></i>{{ slot.start_time }} - {{ slot.end_time }}</span>
                                 <span class="badge bg-secondary-subtle text-secondary border"><i class="bi bi-geo-alt me-1"></i>{{ slot.room_number or 'Unassigned' }}</span>
-                                <span class="badge bg-info-subtle text-info border"><i class="bi bi-mortarboard me-1"></i>{{ slot.semester }}</span>
+                                <span class="badge bg-info-subtle text-info border"><i class="bi bi-mortarboard me-1"></i>{{ slot.semester }} ({{ slot.division or 'Division A' }})</span>
                             </div>
                             <div class="d-flex align-items-center justify-content-between pt-2 border-top">
                                 <small class="text-muted">{{ slot.department }}</small>
@@ -79,6 +98,33 @@
         </div>
     </div>
     {% endfor %}
+</div>
+
+<!-- Modal: AI OCR Upload -->
+<div class="modal fade" id="ocrUploadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-cpu-fill me-2 text-primary"></i>AI Timetable OCR Reader</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('ocr_upload_timetable') }}" method="POST" enctype="multipart/form-data">
+                <div class="modal-body p-4">
+                    <p class="text-muted small">Upload your timetable document (<strong>PDF</strong>, <strong>Excel .xlsx</strong>, <strong>JPG</strong>, or <strong>PNG</strong>). The system will extract rows, times, subjects, semesters, and divisions automatically.</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Select Timetable File <span class="text-danger">*</span></label>
+                        <input type="file" name="timetable_file" class="form-control rounded-3" accept=".pdf,.xlsx,.xls,.png,.jpg,.jpeg" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-3 fw-semibold">
+                        <i class="bi bi-upload me-1"></i> Extract & Verify OCR
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <!-- Modal: Add Timetable Entry -->
@@ -124,19 +170,23 @@
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Semester <span class="text-danger">*</span></label>
                             <select name="semester" class="form-select rounded-3" required>
-                                <option value="Semester 1">Semester 1</option>
-                                <option value="Semester 2">Semester 2</option>
-                                <option value="Semester 3">Semester 3</option>
-                                <option value="Semester 4">Semester 4</option>
-                                <option value="Semester 5">Semester 5</option>
-                                <option value="Semester 6">Semester 6</option>
-                                <option value="Semester 7">Semester 7</option>
-                                <option value="Semester 8">Semester 8</option>
+                                {% for s in range(1, 9) %}
+                                <option value="Semester {{ s }}">Semester {{ s }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                     </div>
 
                     <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Division <span class="text-danger">*</span></label>
+                            <select name="division" class="form-select rounded-3" required>
+                                <option value="Division A">Division A</option>
+                                <option value="Division B">Division B</option>
+                                <option value="Division C">Division C</option>
+                                <option value="Division D">Division D</option>
+                            </select>
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Day of Week <span class="text-danger">*</span></label>
                             <select name="day_of_week" class="form-select rounded-3" required>
@@ -148,13 +198,9 @@
                                 <option value="Saturday">Saturday</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Room / Venue</label>
-                            <input type="text" name="room_number" class="form-control rounded-3" placeholder="e.g. Lab 102 / Room 304">
-                        </div>
                     </div>
 
-                    <div class="row g-3">
+                    <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Start Time <span class="text-danger">*</span></label>
                             <input type="time" name="start_time" class="form-control rounded-3" value="09:00" required>
@@ -163,6 +209,11 @@
                             <label class="form-label fw-semibold">End Time <span class="text-danger">*</span></label>
                             <input type="time" name="end_time" class="form-control rounded-3" value="10:30" required>
                         </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Room / Venue</label>
+                        <input type="text" name="room_number" class="form-control rounded-3" placeholder="e.g. Lab 102 / Room 304">
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0 px-4 pb-4">
