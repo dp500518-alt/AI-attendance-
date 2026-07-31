@@ -140,40 +140,68 @@ async function captureRegistrationSamples(videoElemId, totalCount = 25, progress
     if (startBtn) startBtn.disabled = false;
 }
 
-// 4. Live Classroom Webcam Capture Helper
+// 4. Live Classroom Webcam Capture Helper (Rear & Front Camera Support)
 let classroomWebcamStream = null;
+let classroomFacingMode = 'environment'; // Default to Rear / Back camera for mobile phones
 
-async function startClassroomWebcam(videoElemId) {
+async function startClassroomWebcam(videoElemId, mode = 'environment') {
     const video = document.getElementById(videoElemId);
     if (!video) return;
 
+    if (mode) {
+        classroomFacingMode = mode;
+    }
+
+    // Stop existing stream if running
+    if (classroomWebcamStream) {
+        classroomWebcamStream.getTracks().forEach(track => track.stop());
+        classroomWebcamStream = null;
+    }
+
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert("⚠️ Mobile Camera Security Notice:\n\nBrowsers block live webcam streams over plain HTTP network IP (http://192.168.29.113:5000).\n\nPlease use Option 1 ('Upload Classroom Image / Take Photo') on your phone to snap a photo directly!");
+        alert("⚠️ Mobile Camera Security Notice:\n\nBrowsers require HTTPS or localhost for live camera stream.\n\nPlease use Option 1 ('Snap Photo with Rear Camera') on your phone!");
         return;
     }
 
     try {
         classroomWebcamStream = await navigator.mediaDevices.getUserMedia({
-            video: { width: 1280, height: 720, facingMode: "environment" }
+            video: {
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+                facingMode: { ideal: classroomFacingMode }
+            }
         });
         video.srcObject = classroomWebcamStream;
     } catch (err) {
-        console.error("Classroom webcam error:", err);
-        alert("Unable to open camera feed. On mobile network IP (HTTP), browsers restrict live streaming. Please use the direct Upload / Take Photo option.");
+        console.warn("Retrying camera stream with basic constraints:", err);
+        try {
+            classroomWebcamStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: classroomFacingMode }
+            });
+            video.srcObject = classroomWebcamStream;
+        } catch (fallbackErr) {
+            console.error("Camera access failed:", fallbackErr);
+            alert("Unable to open camera feed. Please use Option 1 ('Snap Photo with Rear Camera / Upload') on your mobile phone.");
+        }
     }
+}
+
+async function toggleClassroomCamera(videoElemId) {
+    classroomFacingMode = (classroomFacingMode === 'environment') ? 'user' : 'environment';
+    await startClassroomWebcam(videoElemId, classroomFacingMode);
 }
 
 function captureClassroomPhoto(videoElemId) {
     const video = document.getElementById(videoElemId);
     if (!video || !classroomWebcamStream) {
-        alert("Camera stream is not active.");
+        alert("Camera stream is not active. Please start camera first.");
         return null;
     }
 
     const canvas = document.createElement('canvas');
-    canvas.width = 960;
-    canvas.height = 540;
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', 0.75);
+    return canvas.toDataURL('image/jpeg', 0.85);
 }

@@ -58,47 +58,52 @@
 <div class="row g-4">
     <!-- Controls Panel: Upload or Webcam -->
     <div class="col-12 col-lg-5">
-        <!-- Option 1: File Upload -->
+        <!-- Option 1: File Upload / Mobile Rear Camera Direct Capture -->
         <div class="custom-card mb-4">
             <div class="card-header-custom">
                 <h5 class="card-title-custom">
-                    <i class="bi bi-camera-fill text-primary me-1"></i> Take / Upload Classroom Photo
+                    <i class="bi bi-camera-fill text-primary me-1"></i> Snap Photo / Upload Classroom Image
                 </h5>
             </div>
             <div class="card-body-custom">
                 <form action="{{ url_for('classroom_upload') }}" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="slot_id" value="{{ active_slot.id if active_slot else '' }}">
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">Click Classroom Photo</label>
+                        <label class="form-label small fw-bold text-dark"><i class="bi bi-phone-vibrate me-1 text-primary"></i> Mobile Rear Camera Direct Capture</label>
                         <input type="file" name="classroom_photo" class="form-control rounded-3" accept="image/*" capture="environment" required>
-                        <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i>System will automatically recognize students for <strong>{{ active_slot.subject_name if active_slot else 'DSP Lecture' }}</strong> without asking any details.</small>
+                        <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i>Tap to open your mobile phone's <strong>Rear / Back Camera</strong> directly and snap a classroom photo.</small>
                     </div>
                     <button type="submit" class="btn btn-primary-custom w-100 justify-content-center rounded-3">
-                        <i class="bi bi-cpu-fill me-1"></i> Snap Photo & Auto-Mark Attendance
+                        <i class="bi bi-cpu-fill me-1"></i> Detect & Auto-Mark Attendance
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- Option 2: Live Webcam Snap -->
+        <!-- Option 2: Live WebRTC Stream with Rear Camera Selection -->
         <div class="custom-card mb-0">
             <div class="card-header-custom">
                 <h5 class="card-title-custom">
-                    <i class="bi bi-webcam-fill text-success me-1"></i> Live Camera Snapshot
+                    <i class="bi bi-webcam-fill text-success me-1"></i> Live Stream Camera
                 </h5>
             </div>
             <div class="card-body-custom text-center">
                 <div class="video-preview-box mb-3" style="height: 250px;">
                     <video id="classroomVideo" autoplay playsinline muted></video>
                 </div>
-                <div class="d-flex justify-content-center gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-primary rounded-3" onclick="startClassroomWebcam('classroomVideo')">
-                        <i class="bi bi-camera-video me-1"></i> Start Camera
+                <div class="d-flex flex-wrap justify-content-center gap-2 mb-2">
+                    <button type="button" class="btn btn-sm btn-primary rounded-3" onclick="startClassroomWebcam('classroomVideo', 'environment')">
+                        <i class="bi bi-camera-fill me-1"></i> Start Rear Camera
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3" onclick="toggleClassroomCamera('classroomVideo')" title="Switch Camera">
+                        <i class="bi bi-arrow-repeat me-1"></i> Switch
                     </button>
                     <button type="button" class="btn btn-sm btn-success rounded-3" onclick="snapAndSubmitClassroom()">
                         <i class="bi bi-camera me-1"></i> Click Photo Now
                     </button>
                 </div>
+                <small class="text-muted d-block" style="font-size: 0.75rem;"><i class="bi bi-phone me-1"></i>Defaults to Rear / Back Camera on mobile browsers</small>
+                
                 <!-- Hidden form for Base64 snap submission -->
                 <form id="snapForm" action="{{ url_for('classroom_snap') }}" method="POST" class="d-none">
                     <input type="hidden" id="snap_b64" name="snap_b64" value="">
