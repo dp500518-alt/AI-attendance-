@@ -100,6 +100,12 @@
             </li>
             {% endif %}
             {% endif %}
+            <!-- Mobile & Desktop Logout Nav Link -->
+            <li class="nav-item mt-3 pt-2 border-top border-secondary-subtle">
+                <a href="{{ url_for('logout') }}" class="nav-link text-danger fw-bold">
+                    <i class="bi bi-box-arrow-right text-danger fs-5 me-1"></i> Logout Account
+                </a>
+            </li>
         </ul>
         <div class="p-3 border-top border-secondary-subtle">
             <div class="d-flex align-items-center justify-content-between text-white-50">
@@ -111,8 +117,8 @@
                         {{ session.get('user_role', 'user') }}
                     </small>
                 </div>
-                <a href="{{ url_for('logout') }}" class="text-danger text-decoration-none small ms-2" title="Logout">
-                    <i class="bi bi-box-arrow-right fs-5"></i>
+                <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-danger px-2 py-1 ms-2 fw-semibold" title="Logout">
+                    <i class="bi bi-box-arrow-right me-1"></i> Logout
                 </a>
             </div>
         </div>
@@ -128,8 +134,8 @@
                 </button>
                 <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
             </div>
-            <div class="navbar-actions d-flex align-items-center gap-3">
-                <div class="position-relative" title="Notifications">
+            <div class="navbar-actions d-flex align-items-center gap-2">
+                <div class="position-relative me-2" title="Notifications">
                     <a href="javascript:void(0)" class="text-body fs-5" id="notifBellIcon">
                         <i class="bi bi-bell-fill"></i>
                         {% if unread_notifications_count > 0 %}
@@ -139,6 +145,11 @@
                         {% endif %}
                     </a>
                 </div>
+                <!-- User Profile & Logout Button in Top Header (Visible on Mobile & Desktop) -->
+                <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fw-semibold d-flex align-items-center gap-1 shadow-sm" title="Logout Account">
+                    <i class="bi bi-box-arrow-right fs-6"></i>
+                    <span class="small">Logout</span>
+                </a>
             </div>
         </header>
 
