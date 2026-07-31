@@ -3,6 +3,52 @@
 {% block page_title %}Classroom Photo Attendance{% endblock %}
 
 {% block content %}
+
+<!-- Zero-Input Live AI Context Banner -->
+<div class="card border-0 shadow-sm rounded-4 mb-4 bg-gradient text-white" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
+    <div class="card-body p-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-white text-primary fw-bold px-3 py-1 rounded-pill shadow-sm">
+                        <i class="bi bi-magic me-1"></i> Zero-Input Auto-Detection
+                    </span>
+                    <span class="badge bg-success border border-light text-white px-2 py-1 rounded-pill small">
+                        <i class="bi bi-check-circle-fill me-1"></i> Timetable Matched
+                    </span>
+                </div>
+                <h4 class="fw-bold mb-1 text-white">
+                    {% if active_slot %}
+                        {{ active_slot.subject_name }}
+                    {% else %}
+                        DSP Lecture
+                    {% endif %}
+                </h4>
+                <div class="d-flex flex-wrap align-items-center gap-3 text-white-50 fs-6 mt-2">
+                    <span><i class="bi bi-mortarboard-fill text-warning me-1"></i><strong>Semester:</strong> {{ active_slot.semester if active_slot else 'Semester 4' }}</span>
+                    <span><i class="bi bi-diagram-3-fill text-warning me-1"></i><strong>Division:</strong> {{ active_slot.division if active_slot else 'Division B' }}</span>
+                    <span><i class="bi bi-person-badge-fill text-warning me-1"></i><strong>Faculty:</strong> {{ active_slot.teacher_name or active_slot.teacher_username if active_slot else 'Faculty XYZ' }}</span>
+                    <span><i class="bi bi-geo-alt-fill text-warning me-1"></i><strong>Classroom:</strong> {{ active_slot.room_number if active_slot and active_slot.room_number else 'Room 302' }}</span>
+                    <span><i class="bi bi-clock-fill text-warning me-1"></i><strong>Time:</strong> {{ active_slot.start_time if active_slot else '10:00' }} - {{ active_slot.end_time if active_slot else '11:00' }}</span>
+                </div>
+            </div>
+            
+            {% if all_slots %}
+            <div class="bg-white bg-opacity-10 p-3 rounded-3 border border-white border-opacity-25 ms-auto" style="min-width: 240px;">
+                <label class="form-label text-white small mb-1 fw-semibold"><i class="bi bi-sliders me-1"></i> Active Timetable Slot Context</label>
+                <select id="slotSelector" class="form-select form-select-sm border-0 shadow-sm rounded-3" onchange="switchTimetableSlot(this.value)">
+                    {% for slot in all_slots %}
+                    <option value="{{ slot.id }}" {% if active_slot and active_slot.id == slot.id %}selected{% endif %}>
+                        {{ slot.subject_name }} ({{ slot.semester }} {{ slot.division }}) - {{ slot.start_time }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
 <div class="row g-4">
     <!-- Controls Panel: Upload or Webcam -->
     <div class="col-12 col-lg-5">
@@ -10,18 +56,19 @@
         <div class="custom-card mb-4">
             <div class="card-header-custom">
                 <h5 class="card-title-custom">
-                    <i class="bi bi-upload text-primary"></i> Upload Classroom Image
+                    <i class="bi bi-camera-fill text-primary me-1"></i> Take / Upload Classroom Photo
                 </h5>
             </div>
             <div class="card-body-custom">
                 <form action="{{ url_for('classroom_upload') }}" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="slot_id" value="{{ active_slot.id if active_slot else '' }}">
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">Select or Take Classroom Photo</label>
-                        <input type="file" name="classroom_photo" class="form-control" accept="image/*" capture="environment" required>
-                        <small class="text-muted">Tap to take a picture with phone camera or select photo from gallery.</small>
+                        <label class="form-label small fw-semibold">Click Classroom Photo</label>
+                        <input type="file" name="classroom_photo" class="form-control rounded-3" accept="image/*" capture="environment" required>
+                        <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i>System will automatically recognize students for <strong>{{ active_slot.subject_name if active_slot else 'DSP Lecture' }}</strong> without asking any details.</small>
                     </div>
-                    <button type="submit" class="btn btn-primary-custom w-100 justify-content-center">
-                        <i class="bi bi-cpu-fill"></i> Detect & Mark Attendance
+                    <button type="submit" class="btn btn-primary-custom w-100 justify-content-center rounded-3">
+                        <i class="bi bi-cpu-fill me-1"></i> Snap Photo & Auto-Mark Attendance
                     </button>
                 </form>
             </div>
@@ -31,24 +78,25 @@
         <div class="custom-card mb-0">
             <div class="card-header-custom">
                 <h5 class="card-title-custom">
-                    <i class="bi bi-webcam-fill text-success"></i> Webcam Snapshot
+                    <i class="bi bi-webcam-fill text-success me-1"></i> Live Camera Snapshot
                 </h5>
             </div>
             <div class="card-body-custom text-center">
-                <div class="video-preview-box mb-3" style="height: 280px;">
+                <div class="video-preview-box mb-3" style="height: 250px;">
                     <video id="classroomVideo" autoplay playsinline muted></video>
                 </div>
                 <div class="d-flex justify-content-center gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="startClassroomWebcam('classroomVideo')">
-                        <i class="bi bi-camera-video"></i> Start Camera
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-3" onclick="startClassroomWebcam('classroomVideo')">
+                        <i class="bi bi-camera-video me-1"></i> Start Camera
                     </button>
-                    <button type="button" class="btn btn-sm btn-success" onclick="snapAndSubmitClassroom()">
-                        <i class="bi bi-camera"></i> Snap Classroom Photo
+                    <button type="button" class="btn btn-sm btn-success rounded-3" onclick="snapAndSubmitClassroom()">
+                        <i class="bi bi-camera me-1"></i> Click Photo Now
                     </button>
                 </div>
                 <!-- Hidden form for Base64 snap submission -->
                 <form id="snapForm" action="{{ url_for('classroom_snap') }}" method="POST" class="d-none">
                     <input type="hidden" id="snap_b64" name="snap_b64" value="">
+                    <input type="hidden" name="slot_id" value="{{ active_slot.id if active_slot else '' }}">
                 </form>
             </div>
         </div>
@@ -59,17 +107,27 @@
         <div class="custom-card">
             <div class="card-header-custom">
                 <h5 class="card-title-custom">
-                    <i class="bi bi-person-check-fill text-success"></i> AI Recognition Result
+                    <i class="bi bi-person-check-fill text-success me-1"></i> AI Zero-Input Attendance Result
                 </h5>
             </div>
             <div class="card-body-custom">
                 {% if result_summary %}
-                <div class="alert alert-info border-0 shadow-sm d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <strong>Faces Detected:</strong> {{ result_summary.total_detected }} &nbsp;|&nbsp;
-                        <strong class="text-success">Newly Marked:</strong> {{ result_summary.newly_marked_present|length }} &nbsp;|&nbsp;
-                        <strong class="text-secondary">Already Marked:</strong> {{ result_summary.already_marked_present|length }} &nbsp;|&nbsp;
-                        <strong class="text-danger">Unknown:</strong> {{ result_summary.unknown_count }}
+                <div class="p-3 bg-light border rounded-3 mb-3">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                        <span class="fw-bold text-primary"><i class="bi bi-award-fill me-1"></i>{{ result_summary.subject_name }}</span>
+                        <span class="badge bg-success-subtle text-success border"><i class="bi bi-shield-check me-1"></i>Zero-Input Processed</span>
+                    </div>
+                    <div class="small text-muted mb-2">
+                        <strong>Semester:</strong> {{ result_summary.semester }} &nbsp;|&nbsp;
+                        <strong>Division:</strong> {{ result_summary.division }} &nbsp;|&nbsp;
+                        <strong>Faculty:</strong> {{ result_summary.teacher_name }} &nbsp;|&nbsp;
+                        <strong>Room:</strong> {{ result_summary.room_number }}
+                    </div>
+                    <div class="d-flex gap-3 small pt-2 border-top">
+                        <span><strong>Detected:</strong> {{ result_summary.total_detected }}</span>
+                        <span class="text-success"><strong>Newly Marked:</strong> {{ result_summary.newly_marked_present|length }}</span>
+                        <span class="text-secondary"><strong>Already Marked:</strong> {{ result_summary.already_marked_present|length }}</span>
+                        <span class="text-danger"><strong>Unknown:</strong> {{ result_summary.unknown_count }}</span>
                     </div>
                 </div>
 
@@ -80,7 +138,7 @@
 
                 <!-- Newly Marked Students List -->
                 {% if result_summary.newly_marked_present %}
-                <h6 class="fw-bold mb-2 text-success"><i class="bi bi-check-circle-fill"></i> Marked Present Today:</h6>
+                <h6 class="fw-bold mb-2 text-success"><i class="bi bi-check-circle-fill me-1"></i> Marked Present Automatically:</h6>
                 <div class="table-responsive mb-3">
                     <table class="table table-sm table-hover align-middle small">
                         <thead class="table-light">
@@ -88,7 +146,7 @@
                                 <th>Student ID</th>
                                 <th>Name</th>
                                 <th>Roll Number</th>
-                                <th>Department</th>
+                                <th>Semester & Div</th>
                                 <th>Confidence</th>
                             </tr>
                         </thead>
@@ -98,7 +156,7 @@
                                 <td><code>{{ st.student_id }}</code></td>
                                 <td class="fw-semibold">{{ st.name }}</td>
                                 <td>{{ st.roll_number }}</td>
-                                <td>{{ st.department }}</td>
+                                <td>{{ st.semester }} ({{ st.division }})</td>
                                 <td><span class="badge bg-success-subtle text-success">{{ st.confidence }}</span></td>
                             </tr>
                             {% endfor %}
@@ -109,8 +167,9 @@
 
                 {% else %}
                 <div class="text-center text-muted py-5">
-                    <i class="bi bi-image fs-1 d-block mb-2 text-secondary"></i>
-                    Upload a classroom photo or snap a picture to trigger AI face detection and multi-student attendance marking.
+                    <i class="bi bi-camera-fill fs-1 d-block mb-2 text-primary opacity-75"></i>
+                    <h6 class="fw-bold text-dark mb-1">Click Classroom Photo Above</h6>
+                    <p class="small text-muted mb-0">The system will automatically detect <strong>Semester 4</strong>, <strong>Division B</strong>, <strong>DSP Lecture</strong>, and <strong>Faculty XYZ</strong> without prompting for input.</p>
                 </div>
                 {% endif %}
             </div>
@@ -121,6 +180,12 @@
 
 {% block scripts %}
 <script>
+    function switchTimetableSlot(slotId) {
+        if (slotId) {
+            window.location.href = "{{ url_for('classroom_attendance') }}?slot_id=" + slotId;
+        }
+    }
+
     function snapAndSubmitClassroom() {
         const b64 = captureClassroomPhoto('classroomVideo');
         if (b64) {

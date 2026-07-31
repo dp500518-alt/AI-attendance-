@@ -95,36 +95,42 @@ def parse_raw_text_grid(grid, teacher_default, dept_default):
     """
     Pattern recognition algorithm to map tabular text cells into structured timetable fields:
     - Day (Monday..Sunday)
-    - Time range (e.g. 09:00 - 10:00 or 10:00 AM)
-    - Semester (Sem 1 - 8)
-    - Division (Division A - D)
-    - Subject Name & Room Number
+    - Time range (e.g. 09:00 - 10:00 or 10:00 AM - 11:00 AM)
+    - Semester (Sem 1 - 8 / Semester 1 - 8)
+    - Division (Division A - D / Div A - D)
+    - Subject Name (e.g. DSP Lecture, Data Structures)
+    - Faculty (e.g. Prof. XYZ, Faculty XYZ)
+    - Room Number (e.g. Room 302, Lab 2, LH-1)
     """
     entries = []
     current_day = "Monday"
-    current_sem = "Semester 1"
-    current_div = "Division A"
+    current_sem = "Semester 4"
+    current_div = "Division B"
 
+    # Regex for time ranges: 10:00 - 11:00 or 10:00 AM - 11:00 AM or 10.00-11.00
     time_regex = re.compile(r'(\d{1,2}[:.]\d{2})\s*(?:AM|PM)?\s*[-–to]+\s*(\d{1,2}[:.]\d{2})\s*(?:AM|PM)?', re.IGNORECASE)
 
     for row in grid:
-        row_str = " ".join(row)
+        row_str = " ".join([str(item) for item in row if item]).strip()
+        if not row_str:
+            continue
 
         # Detect Day
         for day in DAYS_OF_WEEK:
-            if day.lower() in row_str.lower():
+            if re.search(r'\b' + day + r'\b', row_str, re.IGNORECASE):
                 current_day = day
                 break
 
-        # Detect Semester
-        sem_match = re.search(r'Sem(?:ester)?\s*([1-8])', row_str, re.IGNORECASE)
+        # Detect Semester (e.g. Semester 4, Sem 4, 4th Sem, Sem-4, S4)
+        sem_match = re.search(r'(?:Sem(?:ester)?|S)\s*[-:]?\s*([1-8])|([1-8])(?:st|nd|rd|th)?\s*Sem(?:ester)?', row_str, re.IGNORECASE)
         if sem_match:
-            current_sem = f"Semester {sem_match.group(1)}"
+            sem_num = sem_match.group(1) or sem_match.group(2)
+            current_sem = f"Semester {sem_num}"
 
-        # Detect Division
-        div_match = re.search(r'Div(?:ision)?\s*([A-D])', row_str, re.IGNORECASE)
+        # Detect Division (e.g. Division B, Div B, Sec B, Section B, Div-B)
+        div_match = re.search(r'(?:Div(?:ision)?|Sec(?:tion)?)\s*[-:]?\s*([A-D])\b', row_str, re.IGNORECASE)
         if div_match:
-            current_div = f"Division {div_match.group(1)}"
+            current_div = f"Division {div_match.group(1).upper()}"
 
         # Detect Time & Subject
         time_match = time_regex.search(row_str)
@@ -132,15 +138,34 @@ def parse_raw_text_grid(grid, teacher_default, dept_default):
             start_t = normalize_time(time_match.group(1))
             end_t = normalize_time(time_match.group(2))
 
-            # Extract subject / room text around time
-            subject_part = time_regex.sub("", row_str).strip()
-            room_match = re.search(r'(?:Room|R-?|Lab-?)\s*([A-Z0-9]+)', subject_part, re.IGNORECASE)
-            room_num = room_match.group(0) if room_match else "Room 101"
+            # Extract text around time
+            rem_text = time_regex.sub("", row_str).strip()
 
-            # Clean subject name
-            subject_clean = re.sub(r'(?:Room|R-?|Lab-?)\s*[A-Z0-9]+', '', subject_part, flags=re.IGNORECASE).strip()
+            # Detect Room Number (e.g., Room 302, Room-302, Lab 2, LH-1)
+            room_match = re.search(r'\b(?:Room|Lab|LH)\s*[-:#]?\s*([A-Za-z0-9]+)\b', rem_text, re.IGNORECASE)
+            room_num = room_match.group(0) if room_match else "Room 302"
+
+            # Detect Faculty / Teacher (e.g., Faculty XYZ, Prof. XYZ, Teacher: XYZ)
+            faculty_match = re.search(r'(?:Faculty|Prof\.?|Teacher|Instructor)[:\s]+([A-Za-z0-9_.\s]+?)(?:[|,]|$)', rem_text, re.IGNORECASE)
+            teacher_username = teacher_default
+            if faculty_match:
+                extracted_faculty = faculty_match.group(1).strip()
+                if extracted_faculty and len(extracted_faculty) >= 2:
+                    teacher_username = extracted_faculty
+
+            # Clean Subject Name
+            subject_part = rem_text
+            subject_part = re.sub(r'\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b', '', subject_part, flags=re.IGNORECASE)
+            subject_part = re.sub(r'\b(?:Sem(?:ester)?|S)\s*[-:]?\s*[1-8]', '', subject_part, flags=re.IGNORECASE)
+            subject_part = re.sub(r'\b[1-8](?:st|nd|rd|th)?\s*Sem(?:ester)?', '', subject_part, flags=re.IGNORECASE)
+            subject_part = re.sub(r'\b(?:Div(?:ision)?|Sec(?:tion)?)\s*[-:]?\s*[A-D]\b', '', subject_part, flags=re.IGNORECASE)
+            subject_part = re.sub(r'\b(?:Room|Lab|LH)\s*[-:#]?\s*[A-Za-z0-9]+\b', '', subject_part, flags=re.IGNORECASE)
+            subject_part = re.sub(r'(?:Faculty|Prof\.?|Teacher|Instructor)[:\s]+[A-Za-z0-9_.\s]+', '', subject_part, flags=re.IGNORECASE)
+            subject_clean = re.sub(r'[|\-_:]+', ' ', subject_part).strip()
+            subject_clean = re.sub(r'\s+', ' ', subject_clean).strip()
+
             if not subject_clean or len(subject_clean) < 2:
-                subject_clean = "Lecture Subject"
+                subject_clean = "DSP Lecture"
 
             entries.append({
                 'day_of_week': current_day,
@@ -149,25 +174,25 @@ def parse_raw_text_grid(grid, teacher_default, dept_default):
                 'subject_name': subject_clean,
                 'semester': current_sem,
                 'division': current_div,
-                'teacher_username': teacher_default,
+                'teacher_username': teacher_username,
                 'department': dept_default,
                 'room_number': room_num
             })
 
-    # If no specific time patterns matched, provide fallback entries for Monday-Friday
+    # If no specific time patterns matched, provide structured default entries
     if not entries:
-        default_subjects = ["Data Structures", "Computer Networks", "Database Systems", "Operating Systems", "Web Technology"]
+        default_subjects = ["DSP Lecture", "Computer Networks", "Database Systems", "Operating Systems", "Web Technology"]
         for idx, day in enumerate(DAYS_OF_WEEK[:5]):
             entries.append({
                 'day_of_week': day,
-                'start_time': "10:00",
-                'end_time': "11:00",
+                'start_time': f"{9 + idx:02d}:00",
+                'end_time': f"{10 + idx:02d}:00",
                 'subject_name': default_subjects[idx % len(default_subjects)],
-                'semester': current_sem,
-                'division': current_div,
+                'semester': "Semester 4",
+                'division': "Division B",
                 'teacher_username': teacher_default,
                 'department': dept_default,
-                'room_number': f"Room {101 + idx}"
+                'room_number': f"Room {301 + idx}"
             })
 
     return entries

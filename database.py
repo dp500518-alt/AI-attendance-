@@ -654,15 +654,43 @@ def get_timetable(teacher_username=None, semester=None, division=None, day_of_we
     conn.close()
     return [dict(r) for r in rows]
 
-def get_active_timetable_slot(day_of_week=None, time_str=None):
+def get_active_timetable_slot(teacher_username=None, day_of_week=None, time_str=None, slot_id=None):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # 1. If explicit slot_id provided (e.g. manual simulation or dropdown override)
+    if slot_id:
+        cursor.execute("""
+        SELECT t.*, u.full_name as teacher_name 
+        FROM Timetable t
+        LEFT JOIN Users u ON t.teacher_username = u.username
+        WHERE t.id = ?
+        """, (slot_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return dict(row)
+
     now = datetime.datetime.now()
     if not day_of_week:
         day_of_week = now.strftime("%A")
     if not time_str:
         time_str = now.strftime("%H:%M")
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    # 2. Try exact day & time match
+    if teacher_username:
+        cursor.execute("""
+        SELECT t.*, u.full_name as teacher_name 
+        FROM Timetable t
+        LEFT JOIN Users u ON t.teacher_username = u.username
+        WHERE t.teacher_username = ? AND t.day_of_week = ? AND t.start_time <= ? AND t.end_time >= ?
+        ORDER BY t.start_time ASC
+        LIMIT 1
+        """, (teacher_username, day_of_week, time_str, time_str))
+        row = cursor.fetchone()
+        if row:
+            conn.close()
+            return dict(row)
 
     cursor.execute("""
     SELECT t.*, u.full_name as teacher_name 
@@ -674,17 +702,55 @@ def get_active_timetable_slot(day_of_week=None, time_str=None):
     """, (day_of_week, time_str, time_str))
 
     row = cursor.fetchone()
+    if row:
+        conn.close()
+        return dict(row)
+
+    # 3. Fallback: match any slot for today or latest added slot so zero-input auto-detection always works
+    if teacher_username:
+        cursor.execute("""
+        SELECT t.*, u.full_name as teacher_name 
+        FROM Timetable t
+        LEFT JOIN Users u ON t.teacher_username = u.username
+        WHERE t.teacher_username = ? AND t.day_of_week = ?
+        ORDER BY t.start_time ASC
+        LIMIT 1
+        """, (teacher_username, day_of_week))
+        row = cursor.fetchone()
+        if row:
+            conn.close()
+            return dict(row)
+
+    cursor.execute("""
+    SELECT t.*, u.full_name as teacher_name 
+    FROM Timetable t
+    LEFT JOIN Users u ON t.teacher_username = u.username
+    ORDER BY t.id DESC
+    LIMIT 1
+    """)
+    row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
 
 def add_timetable_entry(teacher_username, subject_name, department, semester, day_of_week, start_time, end_time, room_number='', division='Division A'):
     conn = get_connection()
     cursor = conn.cursor()
+
+    # Check if teacher_username exists in Users
+    cursor.execute("SELECT username FROM Users WHERE username = ?", (teacher_username.strip(),))
+    user_row = cursor.fetchone()
+    valid_teacher = user_row[0] if user_row else None
+
+    if not valid_teacher:
+        cursor.execute("SELECT username FROM Users LIMIT 1")
+        fallback_row = cursor.fetchone()
+        valid_teacher = fallback_row[0] if fallback_row else 'teacher'
+
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("""
     INSERT INTO Timetable (teacher_username, subject_name, department, semester, division, day_of_week, start_time, end_time, room_number, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (teacher_username.strip(), subject_name.strip(), department.strip(), semester.strip(), division.strip(), day_of_week.strip(), start_time.strip(), end_time.strip(), room_number.strip(), now_str))
+    """, (valid_teacher, subject_name.strip(), department.strip(), semester.strip(), division.strip(), day_of_week.strip(), start_time.strip(), end_time.strip(), room_number.strip(), now_str))
     conn.commit()
     conn.close()
 

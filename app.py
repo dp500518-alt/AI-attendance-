@@ -195,7 +195,11 @@ def register_student():
 @app.route('/classroom')
 @login_required
 def classroom_attendance():
-    return render_template('classroom.html', active_page='classroom', result_summary=None)
+    selected_slot_id = request.args.get('slot_id', type=int)
+    teacher_name = session.get('user') if session.get('user_role') != 'admin' else None
+    active_slot = database.get_active_timetable_slot(teacher_username=teacher_name, slot_id=selected_slot_id)
+    all_slots = database.get_timetable(teacher_username=teacher_name)
+    return render_template('classroom.html', active_page='classroom', active_slot=active_slot, all_slots=all_slots, result_summary=None)
 
 @app.route('/classroom/upload', methods=['POST'])
 @login_required
@@ -209,6 +213,9 @@ def classroom_upload():
         flash("No file selected.", "error")
         return redirect(url_for('classroom_attendance'))
 
+    selected_slot_id = request.form.get('slot_id', type=int)
+    teacher_name = session.get('user') if session.get('user_role') != 'admin' else None
+
     try:
         import numpy as np
         import cv2
@@ -216,11 +223,19 @@ def classroom_upload():
         img_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
         threshold_val = float(database.get_setting('recognition_threshold', config.RECOGNITION_THRESHOLD))
-        success, msg, summary = attendance.process_classroom_image(img_bgr, custom_threshold=threshold_val)
+        success, msg, summary = attendance.process_classroom_image(
+            img_bgr,
+            custom_threshold=threshold_val,
+            teacher_username=teacher_name,
+            slot_id=selected_slot_id
+        )
+
+        active_slot = database.get_active_timetable_slot(teacher_username=teacher_name, slot_id=selected_slot_id)
+        all_slots = database.get_timetable(teacher_username=teacher_name)
 
         if success:
             flash(msg, "success")
-            return render_template('classroom.html', active_page='classroom', result_summary=summary)
+            return render_template('classroom.html', active_page='classroom', active_slot=active_slot, all_slots=all_slots, result_summary=summary)
         else:
             flash(msg, "error")
 
@@ -233,6 +248,9 @@ def classroom_upload():
 @login_required
 def classroom_snap():
     snap_b64 = request.form.get('snap_b64', '')
+    selected_slot_id = request.form.get('slot_id', type=int)
+    teacher_name = session.get('user') if session.get('user_role') != 'admin' else None
+
     if not snap_b64:
         flash("No camera snapshot received.", "error")
         return redirect(url_for('classroom_attendance'))
@@ -240,11 +258,19 @@ def classroom_snap():
     try:
         img_bgr = decode_base64_image(snap_b64)
         threshold_val = float(database.get_setting('recognition_threshold', config.RECOGNITION_THRESHOLD))
-        success, msg, summary = attendance.process_classroom_image(img_bgr, custom_threshold=threshold_val)
+        success, msg, summary = attendance.process_classroom_image(
+            img_bgr,
+            custom_threshold=threshold_val,
+            teacher_username=teacher_name,
+            slot_id=selected_slot_id
+        )
+
+        active_slot = database.get_active_timetable_slot(teacher_username=teacher_name, slot_id=selected_slot_id)
+        all_slots = database.get_timetable(teacher_username=teacher_name)
 
         if success:
             flash(msg, "success")
-            return render_template('classroom.html', active_page='classroom', result_summary=summary)
+            return render_template('classroom.html', active_page='classroom', active_slot=active_slot, all_slots=all_slots, result_summary=summary)
         else:
             flash(msg, "error")
     except Exception as e:

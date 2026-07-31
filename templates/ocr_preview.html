@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const entries = [];
 
         rows.forEach(row => {
-            entries.append({
+            entries.push({
                 day_of_week: row.querySelector('.cell-day').value,
                 start_time: row.querySelector('.cell-start').value,
                 end_time: row.querySelector('.cell-end').value,
