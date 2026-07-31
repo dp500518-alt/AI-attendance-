@@ -45,33 +45,11 @@ function initMobileSidebar() {
 }
 
 
-// 1. Dark Mode Toggle
+// 1. Light Mode Enforcer
 function initThemeToggle() {
-    const themeBtn = document.getElementById('themeToggleBtn');
-    if (!themeBtn) return;
-
-    const savedTheme = localStorage.getItem('smart_attendance_theme') ||
-        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeIcon(savedTheme);
-
-    themeBtn.addEventListener('click', () => {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('smart_attendance_theme', newTheme);
-        updateThemeIcon(newTheme);
-    });
-}
-
-function updateThemeIcon(theme) {
-    const themeBtn = document.getElementById('themeToggleBtn');
-    if (themeBtn) {
-        themeBtn.innerHTML = theme === 'dark' ?
-            '<i class="bi bi-sun-fill text-warning"></i>' :
-            '<i class="bi bi-moon-stars-fill text-secondary"></i>';
-    }
+    localStorage.removeItem('smart_attendance_theme');
+    document.documentElement.removeAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', 'light');
 }
 
 // 2. Auto Dismiss Flash Messages after 5s
