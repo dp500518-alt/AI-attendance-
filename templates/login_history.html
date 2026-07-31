@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Security Login Audit Log - Smart Attendance{% endblock %}
+{% block page_title %}Security & Login History Audit Log{% endblock %}
+
+{% block content %}
+
+<!-- Summary KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-4">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-primary">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <small class="text-muted fw-semibold text-uppercase d-block mb-1">Total Logins Tracked</small>
+                    <h3 class="fw-bold mb-0 text-dark">{{ total_logins }}</h3>
+                </div>
+                <div class="bg-primary-subtle text-primary p-3 rounded-circle fs-4">
+                    <i class="bi bi-shield-lock-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-4">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-warning">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <small class="text-muted fw-semibold text-uppercase d-block mb-1">New Devices Flagged</small>
+                    <h3 class="fw-bold mb-0 text-warning-emphasis">{{ new_devices_count }}</h3>
+                </div>
+                <div class="bg-warning-subtle text-warning p-3 rounded-circle fs-4">
+                    <i class="bi bi-phone-vibrate-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-4">
+        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-danger">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <small class="text-muted fw-semibold text-uppercase d-block mb-1">Failed Login Attempts</small>
+                    <h3 class="fw-bold mb-0 text-danger">{{ failed_count }}</h3>
+                </div>
+                <div class="bg-danger-subtle text-danger p-3 rounded-circle fs-4">
+                    <i class="bi bi-exclamation-octagon-fill"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search & Filter Controls -->
+<div class="custom-card mb-4">
+    <div class="card-body-custom">
+        <form method="GET" action="{{ url_for('login_history_view') }}" class="row g-3 align-items-center">
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold text-dark mb-1">Search User / IP / Location</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Search username, IP, city, browser..." value="{{ search_term or '' }}">
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-dark mb-1">User Role</label>
+                <select name="role" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Roles</option>
+                    <option value="admin" {% if selected_role == 'admin' %}selected{% endif %}>Admin</option>
+                    <option value="teacher" {% if selected_role == 'teacher' %}selected{% endif %}>Teacher</option>
+                    <option value="student" {% if selected_role == 'student' %}selected{% endif %}>Student</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small fw-semibold text-dark mb-1">Login Date</label>
+                <input type="date" name="date" class="form-control" value="{{ selected_date or '' }}" onchange="this.form.submit()">
+            </div>
+            <div class="col-12 col-md-3 d-flex align-items-center gap-2 pt-md-4">
+                <div class="form-check me-2">
+                    <input class="form-check-input" type="checkbox" name="new_device" value="1" id="newDeviceCheck" {% if new_device_only %}checked{% endif %} onchange="this.form.submit()">
+                    <label class="form-check-label small fw-semibold text-dark" for="newDeviceCheck">
+                        New Devices Only
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary rounded-3 btn-sm px-3 ms-auto">Filter</button>
+                <a href="{{ url_for('login_history_view') }}" class="btn btn-outline-secondary rounded-3 btn-sm">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Login History Table -->
+<div class="custom-card">
+    <div class="card-header-custom flex-wrap gap-2">
+        <h5 class="card-title-custom mb-0">
+            <i class="bi bi-clock-history text-primary me-2"></i> Login Security Audit Trail
+        </h5>
+        <span class="badge bg-light text-dark border">{{ history|length }} Entries Displayed</span>
+    </div>
+    <div class="card-body-custom p-0">
+        {% if history %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">User & Role</th>
+                        <th>Login Time & Date</th>
+                        <th>Approx. Location</th>
+                        <th>IP Address</th>
+                        <th>Device / OS / Browser</th>
+                        <th>Security Alert Flag</th>
+                        <th class="pe-3">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for h in history %}
+                    <tr class="{% if h.status == 'Failed' %}table-danger-subtle{% endif %}">
+                        <td class="ps-3">
+                            <div class="fw-bold text-dark">{{ h.full_name or h.username }}</div>
+                            <small class="text-muted"><code>{{ h.username }}</code></small>
+                            <span class="badge {% if h.role == 'admin' %}bg-danger{% elif h.role == 'teacher' %}bg-primary{% else %}bg-success{% endif %} text-uppercase ms-1" style="font-size: 0.65rem;">
+                                {{ h.role }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark"><i class="bi bi-clock me-1 text-muted"></i>{{ h.login_time }}</div>
+                            <small class="text-muted"><i class="bi bi-calendar-event me-1"></i>{{ h.login_date }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ h.city }}, {{ h.state }}</div>
+                            <small class="text-muted">{{ h.country }} ({{ h.timezone or 'Asia/Kolkata' }})</small>
+                        </td>
+                        <td>
+                            <code class="px-2 py-1 bg-light border rounded text-dark">{{ h.ip_address }}</code>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">
+                                {% if h.device_type == 'Mobile' %}<i class="bi bi-phone text-primary me-1"></i>{% elif h.device_type == 'Tablet' %}<i class="bi bi-tablet text-info me-1"></i>{% else %}<i class="bi bi-laptop text-dark me-1"></i>{% endif %}
+                                {{ h.device_type }}
+                            </div>
+                            <small class="text-muted">{{ h.browser }} on {{ h.os }}</small>
+                        </td>
+                        <td>
+                            {% if h.is_new_device %}
+                            <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2 py-1 rounded-pill">
+                                <i class="bi bi-bell-fill text-warning me-1"></i> NEW DEVICE DETECTED
+                            </span>
+                            {% else %}
+                            <span class="badge bg-light text-secondary border px-2 py-1 rounded-pill">
+                                <i class="bi bi-check2 me-1"></i> Recognized Device
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="pe-3">
+                            {% if h.status == 'Success' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill">
+                                <i class="bi bi-check-circle-fill me-1"></i> Success
+                            </span>
+                            {% else %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill">
+                                <i class="bi bi-x-circle-fill me-1"></i> Failed Attempt
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-shield-x fs-1 d-block mb-2 text-secondary opacity-50"></i>
+            <h6>No login history records found matching your filters.</h6>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

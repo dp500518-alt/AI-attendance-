@@ -81,6 +81,8 @@ def init_db():
         cursor.execute("ALTER TABLE Users ADD COLUMN department TEXT;")
     if 'role' not in user_columns:
         cursor.execute("ALTER TABLE Users ADD COLUMN role TEXT NOT NULL DEFAULT 'teacher';")
+    if 'email' not in user_columns:
+        cursor.execute("ALTER TABLE Users ADD COLUMN email TEXT;")
 
     # Check and add missing columns to Students
     cursor.execute("PRAGMA table_info(Students);")
@@ -136,6 +138,33 @@ def init_db():
         message TEXT NOT NULL,
         channel TEXT NOT NULL DEFAULT 'website',
         is_read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+    );
+    """)
+
+    # LoginHistory Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS LoginHistory (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        role TEXT NOT NULL,
+        full_name TEXT,
+        login_date TEXT NOT NULL,
+        login_time TEXT NOT NULL,
+        ip_address TEXT,
+        country TEXT,
+        state TEXT,
+        city TEXT,
+        latitude REAL,
+        longitude REAL,
+        timezone TEXT,
+        browser TEXT,
+        os TEXT,
+        device_type TEXT,
+        user_agent TEXT,
+        is_new_device INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'Success',
+        session_id TEXT,
         created_at TEXT NOT NULL
     );
     """)
@@ -760,5 +789,99 @@ def delete_timetable_entry(entry_id):
     cursor.execute("DELETE FROM Timetable WHERE id = ?", (entry_id,))
     conn.commit()
     conn.close()
+
+# --- LOGIN HISTORY SECURITY HELPERS ---
+
+def add_login_history(username, role, full_name, login_date, login_time, ip_address, country, state, city, latitude, longitude, timezone, browser, os_name, device_type, user_agent, is_new_device, status, session_id, created_at):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    INSERT INTO LoginHistory (
+        username, role, full_name, login_date, login_time, ip_address,
+        country, state, city, latitude, longitude, timezone,
+        browser, os, device_type, user_agent, is_new_device, status, session_id, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        username, role, full_name, login_date, login_time, ip_address,
+        country, state, city, latitude, longitude, timezone,
+        browser, os_name, device_type, user_agent, 1 if is_new_device else 0, status, session_id, created_at
+    ))
+    conn.commit()
+    inserted_id = cursor.lastrowid
+    conn.close()
+    return inserted_id
+
+def get_user_prior_success_logins(username):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT * FROM LoginHistory 
+    WHERE username = ? AND status = 'Success'
+    ORDER BY id DESC
+    """, (username,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def get_login_history(username=None, role=None, date_filter=None, search_term=None, new_device_only=False):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query = "SELECT * FROM LoginHistory WHERE 1=1"
+    params = []
+
+    if username:
+        query += " AND username = ?"
+        params.append(username)
+
+    if role:
+        query += " AND role = ?"
+        params.append(role)
+
+    if date_filter:
+        query += " AND login_date = ?"
+        params.append(date_filter)
+
+    if new_device_only:
+        query += " AND is_new_device = 1"
+
+    if search_term:
+        term = f"%{search_term.strip()}%"
+        query += " AND (username LIKE ? OR full_name LIKE ? OR ip_address LIKE ? OR city LIKE ? OR browser LIKE ? OR os LIKE ?)"
+        params.extend([term, term, term, term, term, term])
+
+    query += " ORDER BY id DESC LIMIT 500"
+
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def get_user_email(username, role=None):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # First check Users table if email column exists
+    cursor.execute("PRAGMA table_info(Users);")
+    user_cols = [col['name'] for col in cursor.fetchall()]
+    if 'email' in user_cols:
+        cursor.execute("SELECT email FROM Users WHERE username = ?", (username,))
+        row = cursor.fetchone()
+        if row and row['email']:
+            conn.close()
+            return row['email']
+
+    # Next check Students table by username / ID / roll_number
+    cursor.execute("PRAGMA table_info(Students);")
+    st_cols = [col['name'] for col in cursor.fetchall()]
+    if 'email' in st_cols:
+        cursor.execute("SELECT email FROM Students WHERE id = ? OR roll_number = ?", (username, username))
+        row = cursor.fetchone()
+        if row and row['email']:
+            conn.close()
+            return row['email']
+
+    conn.close()
+    return f"{username}@student.edu.in"
 
 

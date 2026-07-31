@@ -150,3 +150,31 @@ CREATE TABLE face_embeddings (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 9. Login History Table
+CREATE TABLE login_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    role VARCHAR(20) NOT NULL,
+    full_name VARCHAR(100) DEFAULT NULL,
+    login_date DATE NOT NULL,
+    login_time TIME NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    country VARCHAR(50) DEFAULT 'India',
+    state VARCHAR(50) DEFAULT 'Gujarat',
+    city VARCHAR(50) DEFAULT 'Surat',
+    latitude DECIMAL(10, 6) DEFAULT NULL,
+    longitude DECIMAL(10, 6) DEFAULT NULL,
+    timezone VARCHAR(50) DEFAULT 'Asia/Kolkata',
+    browser VARCHAR(50) DEFAULT NULL,
+    os VARCHAR(50) DEFAULT NULL,
+    device_type VARCHAR(20) DEFAULT 'Desktop',
+    user_agent TEXT DEFAULT NULL,
+    is_new_device TINYINT(1) DEFAULT 0,
+    status ENUM('Success', 'Failed') DEFAULT 'Success',
+    session_id VARCHAR(100) DEFAULT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_login_user (username),
+    INDEX idx_login_date (login_date),
+    INDEX idx_login_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

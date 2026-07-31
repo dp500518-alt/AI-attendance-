@@ -9,6 +9,7 @@ import register
 import attendance
 import utils
 import ocr_timetable
+import login_security
 import analytics_reports
 import notifications
 from camera import camera_instance, decode_base64_image
@@ -78,7 +79,21 @@ def login():
             session['user_role'] = user.get('role', 'teacher')
             session['user_fullname'] = user.get('full_name') or user['username']
             session['user_dept'] = user.get('department') or ''
-            flash(f"Welcome back, {session['user_fullname']}!", "success")
+
+            # Process Security Login Tracking & New Device Alert Email
+            sec_result = login_security.process_login_security(
+                username=user['username'],
+                role=user.get('role', 'teacher'),
+                full_name=session['user_fullname'],
+                request_obj=request,
+                session_id=session.get('_id', ''),
+                status='Success'
+            )
+
+            if sec_result.get('is_new_device'):
+                flash(f"Welcome back, {session['user_fullname']}! 🔒 New login detected from {sec_result['location']['city']}.", "info")
+            else:
+                flash(f"Welcome back, {session['user_fullname']}!", "success")
 
             if session['user_role'] == 'student':
                 return redirect(url_for('student_dashboard'))
@@ -86,9 +101,49 @@ def login():
                 return redirect(url_for('teacher_dashboard'))
             return redirect(url_for('dashboard'))
         else:
+            # Record failed login attempt
+            if username:
+                login_security.process_login_security(
+                    username=username,
+                    role='unknown',
+                    full_name=username,
+                    request_obj=request,
+                    session_id='',
+                    status='Failed'
+                )
             flash("Invalid username or password.", "error")
 
     return render_template('login.html')
+
+@app.route('/login-history')
+@admin_required
+def login_history_view():
+    date_filter = request.args.get('date', '').strip() or None
+    role_filter = request.args.get('role', '').strip() or None
+    search_term = request.args.get('search', '').strip() or None
+    new_device_only = request.args.get('new_device', '0') == '1'
+
+    history = database.get_login_history(
+        role=role_filter,
+        date_filter=date_filter,
+        search_term=search_term,
+        new_device_only=new_device_only
+    )
+
+    total_logins = len(history)
+    new_devices_count = sum(1 for h in history if h.get('is_new_device'))
+    failed_count = sum(1 for h in history if h.get('status') == 'Failed')
+
+    return render_template('login_history.html',
+                           active_page='login_history',
+                           history=history,
+                           total_logins=total_logins,
+                           new_devices_count=new_devices_count,
+                           failed_count=failed_count,
+                           selected_date=date_filter,
+                           selected_role=role_filter,
+                           search_term=search_term,
+                           new_device_only=new_device_only)
 
 @app.route('/logout')
 def logout():
