@@ -4,7 +4,8 @@
 
 {% block content %}
 
-<!-- Zero-Input Live AI Context Banner (High-Contrast Light Mode Native) -->
+{% if active_slot %}
+<!-- Zero-Input Live AI Context Banner (Active Timetable Matched) -->
 <div class="card border border-primary-subtle shadow-sm rounded-4 mb-4 bg-white">
     <div class="card-body p-4">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -18,28 +19,32 @@
                     </span>
                 </div>
                 <h3 class="fw-bold mb-2 text-dark">
-                    <i class="bi bi-journal-bookmark-fill text-primary me-2"></i>{% if active_slot %}{{ active_slot.subject_name }}{% else %}DSP Lecture{% endif %}
+                    <i class="bi bi-journal-bookmark-fill text-primary me-2"></i>{{ active_slot.subject_name }}
                 </h3>
                 <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 fs-6 fw-semibold">
-                        <i class="bi bi-mortarboard-fill me-1"></i>Semester: {{ active_slot.semester if active_slot else 'Semester 4' }}
+                        <i class="bi bi-mortarboard-fill me-1"></i>Semester: {{ active_slot.semester }}
                     </span>
                     <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-3 py-2 fs-6 fw-semibold">
-                        <i class="bi bi-diagram-3-fill me-1"></i>Division: {{ active_slot.division if active_slot else 'Division B' }}
+                        <i class="bi bi-diagram-3-fill me-1"></i>Division: {{ active_slot.division }}
                     </span>
                     <span class="badge bg-dark-subtle text-dark border border-secondary-subtle px-3 py-2 fs-6 fw-semibold">
-                        <i class="bi bi-person-badge-fill text-primary me-1"></i>Faculty: {{ active_slot.teacher_name or active_slot.teacher_username if active_slot else 'Faculty XYZ' }}
+                        <i class="bi bi-person-badge-fill text-primary me-1"></i>Faculty: {{ active_slot.teacher_name or active_slot.teacher_username }}
                     </span>
+                    {% if active_slot.room_number %}
                     <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6 fw-semibold">
-                        <i class="bi bi-geo-alt-fill me-1"></i>Classroom: {{ active_slot.room_number if active_slot and active_slot.room_number else 'Room 302' }}
+                        <i class="bi bi-geo-alt-fill me-1"></i>Classroom: {{ active_slot.room_number }}
                     </span>
+                    {% endif %}
+                    {% if active_slot.start_time %}
                     <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-3 py-2 fs-6 fw-semibold">
-                        <i class="bi bi-clock-fill me-1"></i>Time: {{ active_slot.start_time if active_slot else '10:30' }} - {{ active_slot.end_time if active_slot else '11:30' }}
+                        <i class="bi bi-clock-fill me-1"></i>Time: {{ active_slot.start_time }} - {{ active_slot.end_time }}
                     </span>
+                    {% endif %}
                 </div>
             </div>
             
-            {% if all_slots %}
+            {% if all_slots and all_slots|length > 0 %}
             <div class="bg-light p-3 rounded-3 border border-secondary-subtle ms-auto" style="min-width: 250px;">
                 <label class="form-label text-dark small mb-1 fw-bold"><i class="bi bi-sliders me-1 text-primary"></i> Active Timetable Slot Context</label>
                 <select id="slotSelector" class="form-select form-select-sm border shadow-sm rounded-3 fw-medium text-dark" onchange="switchTimetableSlot(this.value)">
@@ -54,6 +59,36 @@
         </div>
     </div>
 </div>
+{% else %}
+<!-- General Attendance Mode Banner (When No Timetable Uploaded / Matched) -->
+<div class="card border border-info-subtle shadow-sm rounded-4 mb-4 bg-white">
+    <div class="card-body p-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-secondary text-white fw-bold px-3 py-1 rounded-pill shadow-sm">
+                        <i class="bi bi-camera-fill me-1"></i> General Attendance Mode
+                    </span>
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1 rounded-pill fw-semibold small">
+                        <i class="bi bi-info-circle me-1"></i> No Timetable Matched
+                    </span>
+                </div>
+                <h4 class="fw-bold mb-1 text-dark">
+                    <i class="bi bi-journal-check text-primary me-2"></i>General Classroom Attendance
+                </h4>
+                <p class="text-muted small mb-0 mt-1">
+                    No timetable slot is active for the current time. Attendance will match recognized face photos against <strong>all registered students</strong> in the system.
+                </p>
+            </div>
+            <div class="d-flex flex-wrap gap-2 ms-auto">
+                <a href="{{ url_for('timetable_management') }}" class="btn btn-sm btn-outline-primary rounded-3">
+                    <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> Upload / Manage Timetable
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div class="row g-4">
     <!-- Controls Panel: Upload or Webcam -->
@@ -203,8 +238,14 @@
                 {% else %}
                 <div class="text-center text-muted py-5">
                     <i class="bi bi-camera-fill fs-1 d-block mb-2 text-primary opacity-75"></i>
-                    <h6 class="fw-bold text-dark mb-1">Click Classroom Photo Above</h6>
-                    <p class="small text-muted mb-0">The system will automatically detect <strong>Semester 4</strong>, <strong>Division B</strong>, <strong>DSP Lecture</strong>, and <strong>Faculty XYZ</strong> without prompting for input.</p>
+                    <h6 class="fw-bold text-dark mb-1">Snap or Upload Classroom Photo Above</h6>
+                    <p class="small text-muted mb-0">
+                        {% if active_slot %}
+                        The system will automatically detect faces for <strong>{{ active_slot.subject_name }}</strong> ({{ active_slot.semester }}, {{ active_slot.division }}) without prompting for manual input.
+                        {% else %}
+                        Upload or snap classroom photos to detect faces and mark attendance across all registered students in the system.
+                        {% endif %}
+                    </p>
                 </div>
                 {% endif %}
             </div>

@@ -47,12 +47,12 @@ def process_multiple_classroom_images(img_bgr_list, custom_threshold=None, manua
         slot_id=slot_id
     )
 
-    target_sem = active_slot.get('semester') if active_slot else 'Semester 4'
-    target_div = active_slot.get('division') if active_slot else 'Division B'
-    subject_name = active_slot.get('subject_name') if active_slot else 'DSP Lecture'
+    target_sem = active_slot.get('semester') if active_slot else None
+    target_div = active_slot.get('division') if active_slot else None
+    subject_name = active_slot.get('subject_name') if active_slot else 'General Attendance Session'
     timetable_id = active_slot.get('id') if active_slot else None
-    teacher_name = active_slot.get('teacher_name') or active_slot.get('teacher_username') if active_slot else 'Faculty XYZ'
-    room_number = active_slot.get('room_number') if active_slot else 'Room 302'
+    teacher_name = (active_slot.get('teacher_name') or active_slot.get('teacher_username')) if active_slot else (teacher_username or 'Faculty')
+    room_number = active_slot.get('room_number') if active_slot else 'N/A'
 
     # 2. Retrieve student embeddings filtered by target Semester & Division
     all_embeddings = database.get_all_embeddings()
@@ -167,7 +167,10 @@ def process_multiple_classroom_images(img_bgr_list, custom_threshold=None, manua
     }
 
     photo_label = "photo" if len(valid_imgs) == 1 else "photos"
-    msg = f"Zero-Input AI Multi-Photo Context Active: Processed {len(valid_imgs)} classroom {photo_label} for '{subject_name}' ({target_sem}, {target_div}) | Faculty: {teacher_name} | Room: {room_number}."
+    if active_slot:
+        msg = f"Zero-Input AI Context Active: Processed {len(valid_imgs)} classroom {photo_label} for '{subject_name}' ({target_sem}, {target_div}) | Faculty: {teacher_name} | Room: {room_number}."
+    else:
+        msg = f"General Attendance Mode Active: Processed {len(valid_imgs)} classroom {photo_label}. Matched faces across registered students."
 
     return True, msg, summary
 
