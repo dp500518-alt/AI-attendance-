@@ -66,7 +66,7 @@
                 </h5>
             </div>
             <div class="card-body-custom">
-                <form action="{{ url_for('classroom_upload') }}" method="POST" enctype="multipart/form-data">
+                <form action="{{ url_for('classroom_upload') }}" method="POST" enctype="multipart/form-data" onsubmit="return compressAndSubmitClassroomForm(event, this)">
                     <input type="hidden" name="slot_id" value="{{ active_slot.id if active_slot else '' }}">
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-dark"><i class="bi bi-phone-vibrate me-1 text-primary"></i> Mobile Rear Camera Direct Capture</label>

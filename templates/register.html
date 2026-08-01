@@ -83,12 +83,12 @@
         </div>
     </div>
 
-    <!-- Live Webcam Capture Panel -->
+    <!-- Live Webcam & Photo Upload Panel -->
     <div class="col-12 col-lg-7">
         <div class="custom-card">
             <div class="card-header-custom">
                 <h5 class="card-title-custom">
-                    <i class="bi bi-camera-fill text-success"></i> Capture Face Samples (20–30 Photos)
+                    <i class="bi bi-camera-fill text-success"></i> Capture / Upload Face Samples (10–15 Photos)
                 </h5>
             </div>
             <div class="card-body-custom text-center">
@@ -100,15 +100,25 @@
                 <div class="progress mb-2" style="height: 18px;">
                     <div id="regProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
                 </div>
-                <div id="regStatusText" class="small text-muted mb-3">Camera ready. Click "Start Camera" then "Capture Photos".</div>
+                <div id="regStatusText" class="small text-muted mb-3">Option 1: Click "Start Camera" & "Capture 15 Photos" | Option 2: Upload photo files below.</div>
 
-                <div class="d-flex justify-content-center gap-2">
+                <div class="d-flex justify-content-center flex-wrap gap-2 mb-4">
                     <button type="button" class="btn btn-outline-primary" onclick="startRegistrationWebcam('regVideo')">
-                        <i class="bi bi-camera-video-fill"></i> Start Camera
+                        <i class="bi bi-camera-video-fill me-1"></i> Start Camera
                     </button>
                     <button type="button" id="startCaptureBtn" class="btn btn-success" onclick="onStartCaptureClick()">
-                        <i class="bi bi-disc-fill"></i> Capture 25 Photos
+                        <i class="bi bi-disc-fill me-1"></i> Capture 15 Photos
                     </button>
+                </div>
+
+                <div class="border-top pt-3 text-start">
+                    <label class="form-label small fw-semibold text-dark">
+                        <i class="bi bi-upload text-primary me-1"></i> Option 2: Upload or Snap Face Photos from Phone/PC
+                    </label>
+                    <input type="file" id="regFileInput" multiple accept="image/*" class="form-control rounded-3" onchange="handleRegisterFileUpload(this, 'regProgressBar', 'regStatusText')">
+                    <small class="text-muted d-block mt-1">
+                        <i class="bi bi-shield-check me-1"></i>Photos are automatically resized and compressed on your device before upload to prevent network delays.
+                    </small>
                 </div>
             </div>
         </div>
@@ -127,8 +137,23 @@
             return;
         }
 
-        await captureRegistrationSamples('regVideo', 25, 'regProgressBar', 'regStatusText');
-        document.getElementById('samples_json').value = JSON.stringify(regCapturedSamples);
+        await captureRegistrationSamples('regVideo', 15, 'regProgressBar', 'regStatusText');
     }
+
+    document.getElementById('registerStudentForm').addEventListener('submit', function(e) {
+        const samplesJson = document.getElementById('samples_json').value;
+        if (samplesJson && samplesJson.length > 3.5 * 1024 * 1024) {
+            alert("Warning: Photo data is too large. Automatically trimming samples...");
+            try {
+                let parsed = JSON.parse(samplesJson);
+                if (parsed.length > 10) {
+                    parsed = parsed.slice(0, 10);
+                    document.getElementById('samples_json').value = JSON.stringify(parsed);
+                }
+            } catch(err) {
+                console.error(err);
+            }
+        }
+    });
 </script>
 {% endblock %}
