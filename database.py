@@ -2,6 +2,7 @@ import sqlite3
 import json
 import os
 import datetime
+import time
 import numpy as np
 from werkzeug.security import generate_password_hash, check_password_hash
 import config
@@ -17,10 +18,28 @@ def get_connection():
                 print(f"Copied base database seed from {base_db} to {config.DB_PATH}")
             except Exception as e:
                 print(f"Error copying base DB seed: {e}")
-    conn = sqlite3.connect(config.DB_PATH)
+    conn = sqlite3.connect(config.DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON;")
+    try:
+        conn.execute("PRAGMA journal_mode = WAL;")
+        conn.execute("PRAGMA busy_timeout = 30000;")
+        conn.execute("PRAGMA foreign_keys = ON;")
+    except Exception:
+        pass
     return conn
+
+def execute_with_retry(query_func, max_retries=5, delay=0.2):
+    """
+    Executes a database query operation with exponential retry backoff if database is locked or busy.
+    """
+    for attempt in range(max_retries):
+        try:
+            return query_func()
+        except sqlite3.OperationalError as e:
+            if ("locked" in str(e).lower() or "busy" in str(e).lower()) and attempt < max_retries - 1:
+                time.sleep(delay * (2 ** attempt))
+                continue
+            raise e
 
 def init_db():
     conn = get_connection()
@@ -323,15 +342,20 @@ def change_admin_password(username, new_password):
 
 # Student Functions
 def add_student(student_id, roll_number, name, department, semester, division='Division A', email='', phone=''):
-    conn = get_connection()
-    cursor = conn.cursor()
-    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cursor.execute("""
-    INSERT INTO Students (id, roll_number, name, department, semester, division, email, phone, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (student_id.strip(), roll_number.strip(), name.strip(), department.strip(), semester.strip(), division.strip(), email.strip(), phone.strip(), now_str))
-    conn.commit()
-    conn.close()
+    def _action():
+        conn = get_connection()
+        try:
+            cursor = conn.cursor()
+            now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cursor.execute("""
+            INSERT INTO Students (id, roll_number, name, department, semester, division, email, phone, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (student_id.strip(), roll_number.strip(), name.strip(), department.strip(), semester.strip(), division.strip(), email.strip(), phone.strip(), now_str))
+            conn.commit()
+        finally:
+            conn.close()
+
+    execute_with_retry(_action)
 
 def get_all_students():
     conn = get_connection()
@@ -386,25 +410,30 @@ def delete_student(student_id):
 
 # Embeddings Functions
 def save_embedding(student_id, embedding_vector):
-    if isinstance(embedding_vector, np.ndarray):
-        emb_list = embedding_vector.tolist()
-    else:
-        emb_list = list(embedding_vector)
+    def _action():
+        if isinstance(embedding_vector, np.ndarray):
+            emb_list = embedding_vector.tolist()
+        else:
+            emb_list = list(embedding_vector)
 
-    emb_json = json.dumps(emb_list)
-    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        emb_json = json.dumps(emb_list)
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-    INSERT INTO Embeddings (student_id, embedding, updated_at)
-    VALUES (?, ?, ?)
-    ON CONFLICT(student_id) DO UPDATE SET
-        embedding = excluded.embedding,
-        updated_at = excluded.updated_at
-    """, (student_id, emb_json, now_str))
-    conn.commit()
-    conn.close()
+        conn = get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+            INSERT INTO Embeddings (student_id, embedding, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(student_id) DO UPDATE SET
+                embedding = excluded.embedding,
+                updated_at = excluded.updated_at
+            """, (student_id, emb_json, now_str))
+            conn.commit()
+        finally:
+            conn.close()
+
+    execute_with_retry(_action)
 
 def get_all_embeddings():
     conn = get_connection()
@@ -1290,16 +1319,21 @@ def get_user_email(username, role=None):
 def save_student_photos(student_id, photos_b64_list):
     if not photos_b64_list:
         return
-    conn = get_connection()
-    cursor = conn.cursor()
-    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    for photo_b64 in photos_b64_list:
-        cursor.execute(
-            "INSERT INTO StudentPhotos (student_id, photo_b64, created_at) VALUES (?, ?, ?)",
-            (str(student_id), photo_b64, now_str)
-        )
-    conn.commit()
-    conn.close()
+    def _action():
+        conn = get_connection()
+        try:
+            cursor = conn.cursor()
+            now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            for photo_b64 in photos_b64_list:
+                cursor.execute(
+                    "INSERT INTO StudentPhotos (student_id, photo_b64, created_at) VALUES (?, ?, ?)",
+                    (str(student_id), photo_b64, now_str)
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+    execute_with_retry(_action)
 
 def get_student_photos(student_id):
     conn = get_connection()
