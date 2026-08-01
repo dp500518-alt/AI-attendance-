@@ -8,15 +8,28 @@ from camera import encode_bgr_to_base64
 
 def process_classroom_image(img_bgr, custom_threshold=None, manual_slot=None, teacher_username=None, slot_id=None):
     """
-    Intelligent Classroom Photo Attendance Processor:
+    Wrapper for single classroom photo attendance processing.
+    """
+    if img_bgr is None or img_bgr.size == 0:
+        return False, "Invalid image data provided.", None
+    return process_multiple_classroom_images([img_bgr], custom_threshold, manual_slot, teacher_username, slot_id)
+
+def process_multiple_classroom_images(img_bgr_list, custom_threshold=None, manual_slot=None, teacher_username=None, slot_id=None):
+    """
+    Intelligent Multi-Photo Classroom Attendance Processor:
     1. Determines current timestamp & day of week.
     2. Queries active timetable slot automatically (or accepts slot_id / manual_slot).
     3. Scopes candidate embeddings ONLY to students enrolled in target Semester & Division.
-    4. Runs multi-face recognition.
+    4. Runs multi-face recognition across ALL provided photos (e.g. Left, Center, Right of room).
     5. Saves attendance bound to timetable_id, subject, semester, division, and teacher.
-    6. Triggers low-attendance notification if student falls below 50%.
+    6. Aggregates recognized faces so students in ANY photo are marked Present once.
+    7. Triggers low-attendance notification if student falls below 50%.
     """
-    if img_bgr is None or img_bgr.size == 0:
+    if not img_bgr_list:
+        return False, "No valid images provided.", None
+
+    valid_imgs = [img for img in img_bgr_list if img is not None and img.size > 0]
+    if not valid_imgs:
         return False, "Invalid image data provided.", None
 
     now = datetime.datetime.now()
@@ -41,12 +54,7 @@ def process_classroom_image(img_bgr, custom_threshold=None, manual_slot=None, te
     teacher_name = active_slot.get('teacher_name') or active_slot.get('teacher_username') if active_slot else 'Faculty XYZ'
     room_number = active_slot.get('room_number') if active_slot else 'Room 302'
 
-    # 2. Save raw classroom photo
-    raw_filename = f"classroom_{timestamp}.jpg"
-    raw_filepath = os.path.join(config.CAPTURED_DIR, raw_filename)
-    cv2.imwrite(raw_filepath, img_bgr)
-
-    # 3. Retrieve student embeddings filtered by target Semester & Division if active slot detected
+    # 2. Retrieve student embeddings filtered by target Semester & Division
     all_embeddings = database.get_all_embeddings()
 
     if target_sem and target_div:
@@ -60,67 +68,83 @@ def process_classroom_image(img_bgr, custom_threshold=None, manual_slot=None, te
 
     student_map = {s['id']: s for s in all_students}
     student_names = {s['id']: f"{s['name']} ({s['roll_number']})" for s in all_students}
-
-    # 4. Multi-face recognition
     threshold = custom_threshold if custom_threshold is not None else config.RECOGNITION_THRESHOLD
-    recognition_results = face_engine.recognize_faces(img_bgr, known_embeddings, threshold=threshold)
 
-    # 5. Annotate image
-    annotated_bgr = face_engine.annotate_image(img_bgr, recognition_results, student_names_map=student_names)
-    annotated_filename = f"annotated_{timestamp}.jpg"
-    annotated_filepath = os.path.join(config.CAPTURED_DIR, annotated_filename)
-    cv2.imwrite(annotated_filepath, annotated_bgr)
-
-    # 6. Mark Attendance for recognized scoped students
     marked_present = []
     already_marked = []
-    unknown_count = 0
+    seen_student_ids = set()
+    annotated_images_info = []
+    total_detected = 0
+    total_unknown = 0
 
-    for res in recognition_results:
-        sid = res['student_id']
-        matched = res['matched']
-        sim = res['similarity']
+    for idx, img_bgr in enumerate(valid_imgs):
+        sub_ts = f"{timestamp}_{idx+1}"
+        raw_filename = f"classroom_{sub_ts}.jpg"
+        raw_filepath = os.path.join(config.CAPTURED_DIR, raw_filename)
+        cv2.imwrite(raw_filepath, img_bgr)
 
-        if matched and sid in student_map:
-            student_info = student_map[sid]
-            sem_val = target_sem or student_info['semester']
-            div_val = target_div or student_info.get('division', 'Division A')
+        # Multi-face recognition on frame
+        recognition_results = face_engine.recognize_faces(img_bgr, known_embeddings, threshold=threshold)
+        total_detected += len(recognition_results)
 
-            inserted = database.mark_attendance(
-                student_id=sid,
-                status='Present',
-                date_str=date_today,
-                time_str=time_now,
-                timetable_id=timetable_id,
-                subject_name=subject_name,
-                semester=sem_val,
-                division=div_val
-            )
+        # Annotate image
+        annotated_bgr = face_engine.annotate_image(img_bgr, recognition_results, student_names_map=student_names)
+        annotated_filename = f"annotated_{sub_ts}.jpg"
+        annotated_filepath = os.path.join(config.CAPTURED_DIR, annotated_filename)
+        cv2.imwrite(annotated_filepath, annotated_bgr)
 
-            record = {
-                'student_id': sid,
-                'name': student_info['name'],
-                'roll_number': student_info['roll_number'],
-                'department': student_info['department'],
-                'semester': sem_val,
-                'division': div_val,
-                'subject': subject_name,
-                'confidence': f"{int(sim * 100)}%",
-                'status': 'Present',
-                'is_new': inserted
-            }
+        annotated_b64 = encode_bgr_to_base64(annotated_bgr)
+        annotated_images_info.append({
+            'index': idx + 1,
+            'filename': annotated_filename,
+            'b64': annotated_b64,
+            'detected_count': len(recognition_results)
+        })
 
-            if inserted:
-                marked_present.append(record)
+        for res in recognition_results:
+            sid = res['student_id']
+            matched = res['matched']
+            sim = res['similarity']
+
+            if matched and sid in student_map:
+                if sid not in seen_student_ids:
+                    seen_student_ids.add(sid)
+                    student_info = student_map[sid]
+                    sem_val = target_sem or student_info['semester']
+                    div_val = target_div or student_info.get('division', 'Division A')
+
+                    inserted = database.mark_attendance(
+                        student_id=sid,
+                        status='Present',
+                        date_str=date_today,
+                        time_str=time_now,
+                        timetable_id=timetable_id,
+                        subject_name=subject_name,
+                        semester=sem_val,
+                        division=div_val
+                    )
+
+                    record = {
+                        'student_id': sid,
+                        'name': student_info['name'],
+                        'roll_number': student_info['roll_number'],
+                        'department': student_info['department'],
+                        'semester': sem_val,
+                        'division': div_val,
+                        'subject': subject_name,
+                        'confidence': f"{int(sim * 100)}%",
+                        'status': 'Present',
+                        'is_new': inserted
+                    }
+
+                    if inserted:
+                        marked_present.append(record)
+                    else:
+                        already_marked.append(record)
+
+                    check_and_notify_student_attendance(sid, student_info['name'])
             else:
-                already_marked.append(record)
-
-            # Check low attendance warning threshold
-            check_and_notify_student_attendance(sid, student_info['name'])
-        else:
-            unknown_count += 1
-
-    annotated_b64 = encode_bgr_to_base64(annotated_bgr)
+                total_unknown += 1
 
     summary = {
         'timestamp': timestamp,
@@ -133,16 +157,17 @@ def process_classroom_image(img_bgr, custom_threshold=None, manual_slot=None, te
         'division': target_div or 'All Divisions',
         'teacher_name': teacher_name,
         'room_number': room_number,
-        'total_detected': len(recognition_results),
+        'total_detected': total_detected,
         'newly_marked_present': marked_present,
         'already_marked_present': already_marked,
-        'unknown_count': unknown_count,
-        'annotated_image_b64': annotated_b64,
-        'raw_filename': raw_filename,
-        'annotated_filename': annotated_filename
+        'unknown_count': total_unknown,
+        'annotated_images': annotated_images_info,
+        'annotated_image_b64': annotated_images_info[0]['b64'] if annotated_images_info else '',
+        'photos_processed_count': len(valid_imgs)
     }
 
-    msg = f"Zero-Input AI Context Active: Recognized faces for '{subject_name}' ({target_sem}, {target_div}) | Faculty: {teacher_name} | Room: {room_number}."
+    photo_label = "photo" if len(valid_imgs) == 1 else "photos"
+    msg = f"Zero-Input AI Multi-Photo Context Active: Processed {len(valid_imgs)} classroom {photo_label} for '{subject_name}' ({target_sem}, {target_div}) | Faculty: {teacher_name} | Room: {room_number}."
 
     return True, msg, summary
 

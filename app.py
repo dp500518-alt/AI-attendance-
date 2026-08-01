@@ -266,13 +266,9 @@ def classroom_attendance():
 @app.route('/classroom/upload', methods=['POST'])
 @login_required
 def classroom_upload():
-    if 'classroom_photo' not in request.files:
-        flash("No file selected.", "error")
-        return redirect(url_for('classroom_attendance'))
-
-    file = request.files['classroom_photo']
-    if file.filename == '':
-        flash("No file selected.", "error")
+    files = request.files.getlist('classroom_photo')
+    if not files or all(f.filename == '' for f in files):
+        flash("No photo file(s) selected.", "error")
         return redirect(url_for('classroom_attendance'))
 
     selected_slot_id = request.form.get('slot_id', type=int)
@@ -281,12 +277,22 @@ def classroom_upload():
     try:
         import numpy as np
         import cv2
-        file_bytes = np.frombuffer(file.read(), np.uint8)
-        img_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+
+        img_bgr_list = []
+        for file in files:
+            if file and file.filename != '':
+                file_bytes = np.frombuffer(file.read(), np.uint8)
+                img_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+                if img_bgr is not None and img_bgr.size > 0:
+                    img_bgr_list.append(img_bgr)
+
+        if not img_bgr_list:
+            flash("Could not read any valid image files.", "error")
+            return redirect(url_for('classroom_attendance'))
 
         threshold_val = float(database.get_setting('recognition_threshold', config.RECOGNITION_THRESHOLD))
-        success, msg, summary = attendance.process_classroom_image(
-            img_bgr,
+        success, msg, summary = attendance.process_multiple_classroom_images(
+            img_bgr_list,
             custom_threshold=threshold_val,
             teacher_username=teacher_name,
             slot_id=selected_slot_id
@@ -302,7 +308,7 @@ def classroom_upload():
             flash(msg, "error")
 
     except Exception as e:
-        flash(f"Error processing image: {e}", "error")
+        flash(f"Error processing images: {e}", "error")
 
     return redirect(url_for('classroom_attendance'))
 

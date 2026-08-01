@@ -69,9 +69,9 @@
                 <form action="{{ url_for('classroom_upload') }}" method="POST" enctype="multipart/form-data" onsubmit="return compressAndSubmitClassroomForm(event, this)">
                     <input type="hidden" name="slot_id" value="{{ active_slot.id if active_slot else '' }}">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold text-dark"><i class="bi bi-phone-vibrate me-1 text-primary"></i> Mobile Rear Camera Direct Capture</label>
-                        <input type="file" name="classroom_photo" class="form-control rounded-3" accept="image/*" capture="environment" required>
-                        <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i>Tap to open your mobile phone's <strong>Rear / Back Camera</strong> directly and snap a classroom photo.</small>
+                        <label class="form-label small fw-bold text-dark"><i class="bi bi-images me-1 text-primary"></i> Upload Single or Multiple Classroom Photos</label>
+                        <input type="file" name="classroom_photo" class="form-control rounded-3" accept="image/*" multiple capture="environment" required>
+                        <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i>Select or snap <strong>one or multiple photos</strong> (e.g. left, center, & right side angles) to ensure all student faces are captured.</small>
                     </div>
                     <button type="submit" class="btn btn-primary-custom w-100 justify-content-center rounded-3">
                         <i class="bi bi-cpu-fill me-1"></i> Detect & Auto-Mark Attendance
@@ -133,6 +133,9 @@
                         <strong>Division:</strong> {{ result_summary.division }} &nbsp;|&nbsp;
                         <strong>Faculty:</strong> {{ result_summary.teacher_name }} &nbsp;|&nbsp;
                         <strong>Room:</strong> {{ result_summary.room_number }}
+                        {% if result_summary.photos_processed_count and result_summary.photos_processed_count > 1 %}
+                        &nbsp;|&nbsp; <strong>Photos:</strong> <span class="badge bg-primary-subtle text-primary">{{ result_summary.photos_processed_count }} Photos Combined</span>
+                        {% endif %}
                     </div>
                     <div class="d-flex gap-3 small pt-2 border-top">
                         <span><strong>Detected:</strong> {{ result_summary.total_detected }}</span>
@@ -143,9 +146,30 @@
                 </div>
 
                 <!-- Annotated Image Display -->
+                {% if result_summary.annotated_images and result_summary.annotated_images|length > 1 %}
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2 text-primary"><i class="bi bi-images me-1"></i> Processed {{ result_summary.annotated_images|length }} Classroom Photos:</h6>
+                    <div class="row g-2">
+                        {% for img in result_summary.annotated_images %}
+                        <div class="col-12 col-md-6">
+                            <div class="card h-100 border shadow-sm">
+                                <div class="card-header py-1 px-2 small bg-light d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-dark"><i class="bi bi-camera-fill text-primary me-1"></i> Photo {{ img.index }}</span>
+                                    <span class="badge bg-primary-subtle text-primary border"><i class="bi bi-person-fill me-1"></i>{{ img.detected_count }} Detected</span>
+                                </div>
+                                <div class="card-body p-1 text-center bg-dark rounded-bottom">
+                                    <img src="{{ img.b64 }}" class="img-fluid rounded" alt="Annotated Classroom Photo {{ img.index }}">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
                 <div class="text-center mb-4">
                     <img src="{{ result_summary.annotated_image_b64 }}" class="img-fluid rounded border shadow-sm" alt="Classroom Bounding Boxes">
                 </div>
+                {% endif %}
 
                 <!-- Newly Marked Students List -->
                 {% if result_summary.newly_marked_present %}
