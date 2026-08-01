@@ -1,35 +1,45 @@
 {% extends "base.html" %}
 
-{% block title %}Class Timetable - Smart Attendance{% endblock %}
-{% block page_title %}Classroom Timetable & OCR Reader{% endblock %}
+{% block title %}{% if session.get('user_role') == 'admin' %}Teacher Timetable Management{% else %}My Timetable{% endif %} - Smart Attendance{% endblock %}
+{% block page_title %}{% if session.get('user_role') == 'admin' %}Teacher Timetable Management Module{% else %}My Weekly Timetable{% endif %}{% endblock %}
 
 {% block content %}
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
     <div>
-        <h4 class="fw-bold mb-1"><i class="bi bi-calendar3 me-2 text-primary"></i>Weekly Schedule Grid</h4>
-        <p class="text-muted small mb-0">Upload PDF/Excel/Image timetables via AI OCR or manage class slots manually.</p>
-    </div>
-    <div class="d-flex flex-wrap gap-2">
-        <form method="GET" action="{{ url_for('timetable_management') }}" class="d-flex align-items-center gap-2">
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-calendar3 me-2 text-primary"></i>
+            {% if session.get('user_role') == 'admin' %}Teacher Timetable Management{% else %}My Timetable{% endif %}
+        </h4>
+        <p class="text-muted small mb-0">
             {% if session.get('user_role') == 'admin' %}
-            <select name="teacher" class="form-select form-select-sm rounded-3" onchange="this.form.submit()">
+            Manage schedules, resolve conflicts, and assign timetables for all teachers.
+            {% else %}
+            View your personal teaching schedule and take smart auto-detected attendance.
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <form method="GET" action="{{ url_for('timetable_management') }}" class="d-flex flex-wrap align-items-center gap-2">
+            {% if session.get('user_role') == 'admin' %}
+            <select name="teacher" class="form-select form-select-sm rounded-3 shadow-sm" onchange="this.form.submit()" style="min-width: 160px;">
                 <option value="">All Teachers</option>
                 {% for t in all_teachers %}
                 <option value="{{ t.username }}" {% if filter_teacher == t.username %}selected{% endif %}>
-                    {{ t.full_name or t.username }}
+                    {{ t.full_name or t.username }} ({{ t.username }})
                 </option>
                 {% endfor %}
             </select>
             {% endif %}
 
-            <select name="sem" class="form-select form-select-sm rounded-3" onchange="this.form.submit()">
+            <select name="sem" class="form-select form-select-sm rounded-3 shadow-sm" onchange="this.form.submit()">
                 <option value="">All Semesters</option>
                 {% for s in range(1, 9) %}
                 <option value="Semester {{ s }}" {% if filter_sem == 'Semester ' ~ s %}selected{% endif %}>Semester {{ s }}</option>
                 {% endfor %}
             </select>
 
-            <select name="div" class="form-select form-select-sm rounded-3" onchange="this.form.submit()">
+            <select name="div" class="form-select form-select-sm rounded-3 shadow-sm" onchange="this.form.submit()">
                 <option value="">All Divisions</option>
                 {% for d in ['Division A', 'Division B', 'Division C', 'Division D'] %}
                 <option value="{{ d }}" {% if filter_div == d %}selected{% endif %}>{{ d }}</option>
@@ -37,89 +47,260 @@
             </select>
         </form>
 
-        <button class="btn btn-outline-primary rounded-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#ocrUploadModal">
-            <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> AI OCR Upload
+        {% if session.get('user_role') == 'admin' %}
+        <form action="{{ url_for('seed_100_teachers') }}" method="POST" class="d-inline" onsubmit="return confirm('Seed / verify 100 teacher accounts with conflict-free timetables?');">
+            <button type="submit" class="btn btn-sm btn-outline-secondary rounded-3 shadow-sm" title="Generate 100 teachers with conflict-free schedules">
+                <i class="bi bi-people-fill me-1"></i> Seed 100 Teachers
+            </button>
+        </form>
+        {% endif %}
+
+        <button class="btn btn-sm btn-outline-primary rounded-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#ocrUploadModal">
+            <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> Upload Timetable (PDF/Excel/CSV/Image)
         </button>
 
-        <button class="btn btn-primary rounded-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#addTimetableModal">
-            <i class="bi bi-plus-circle-fill me-1"></i> Add Schedule Slot
+        <button class="btn btn-sm btn-primary rounded-3 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#addTimetableModal">
+            <i class="bi bi-plus-circle-fill me-1"></i> Add Timetable Slot
         </button>
     </div>
 </div>
 
-<!-- Timetable Grid -->
-<div class="row g-4">
-    {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
-    {% for day in days %}
-    {% set day_slots = timetable_entries | selectattr('day_of_week', 'equalto', day) | list %}
-    <div class="col-md-6 col-xl-4">
-        <div class="card border-0 shadow-sm rounded-4 h-100">
-            <div class="card-header bg-light border-0 py-3 px-4 d-flex align-items-center justify-content-between">
-                <span class="fw-bold text-body"><i class="bi bi-calendar-event me-2 text-primary"></i>{{ day }}</span>
-                <span class="badge bg-white text-secondary border rounded-pill">{{ day_slots|length }} Slots</span>
-            </div>
-            <div class="card-body p-3">
-                {% if day_slots %}
-                    <div class="d-flex flex-column gap-3">
-                        {% for slot in day_slots %}
-                        <div class="p-3 bg-body-tertiary rounded-3 border border-secondary-subtle">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div>
-                                    <h6 class="fw-bold mb-1 text-primary">{{ slot.subject_name }}</h6>
-                                    <small class="text-muted d-block"><i class="bi bi-person me-1"></i>{{ slot.teacher_name or slot.teacher_username }}</small>
-                                </div>
-                                <form action="{{ url_for('delete_timetable_entry', entry_id=slot.id) }}" method="POST" onsubmit="return confirm('Remove this timetable entry?');">
-                                    <button type="submit" class="btn btn-link text-danger p-0 border-0" title="Delete Slot">
-                                        <i class="bi bi-x-circle-fill"></i>
-                                    </button>
-                                </form>
-                            </div>
-                            <div class="d-flex flex-wrap gap-2 mb-2">
-                                <span class="badge bg-primary-subtle text-primary border"><i class="bi bi-clock me-1"></i>{{ slot.start_time }} - {{ slot.end_time }}</span>
-                                <span class="badge bg-secondary-subtle text-secondary border"><i class="bi bi-geo-alt me-1"></i>{{ slot.room_number or 'Unassigned' }}</span>
-                                <span class="badge bg-info-subtle text-info border"><i class="bi bi-mortarboard me-1"></i>{{ slot.semester }} ({{ slot.division or 'Division A' }})</span>
-                            </div>
-                            <div class="d-flex align-items-center justify-content-between pt-2 border-top">
-                                <small class="text-muted">{{ slot.department }}</small>
-                                <a href="{{ url_for('classroom_attendance') }}" class="btn btn-sm btn-outline-primary rounded-pill py-0 px-2" style="font-size: 0.75rem;">
-                                    <i class="bi bi-camera-fill me-1"></i>Take Attendance
-                                </a>
-                            </div>
-                        </div>
+<!-- Modern Weekly Calendar Grid View -->
+<div class="custom-card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
+    <div class="card-header bg-primary bg-gradient text-white py-3 px-4 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap-fill me-2"></i>Weekly Timetable Matrix</h6>
+        <span class="badge bg-white text-primary rounded-pill px-3 py-1 fw-bold">{{ timetable_entries|length }} Total Slots Listed</span>
+    </div>
+    <div class="table-responsive">
+        {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+        <table class="table table-bordered align-middle mb-0 text-center custom-calendar-grid">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 140px;" class="py-3 text-muted fw-bold"><i class="bi bi-clock me-1"></i>Time Slot</th>
+                    {% for day in days %}
+                    <th class="py-3 fw-bold text-dark">{{ day }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% set standard_slots = [
+                    ('09:00', '10:00', '09:00–10:00 AM'),
+                    ('10:00', '11:00', '10:00–11:00 AM'),
+                    ('11:15', '12:15', '11:15–12:15 PM'),
+                    ('12:15', '13:15', '12:15–01:15 PM'),
+                    ('14:00', '15:00', '02:00–03:00 PM'),
+                    ('15:00', '16:00', '03:00–04:00 PM'),
+                    ('16:00', '17:00', '04:00–05:00 PM')
+                ] %}
+
+                {% for st, et, label in standard_slots %}
+                <tr>
+                    <td class="bg-light-subtle fw-bold text-secondary text-nowrap py-3 align-middle" style="font-size: 0.85rem;">
+                        {{ label }}
+                    </td>
+                    {% for day in days %}
+                    <td class="p-2 align-top text-start position-relative" style="min-width: 170px; min-height: 110px; background-color: rgba(248, 249, 250, 0.4);">
+                        {% set matching_slots = [] %}
+                        {% for entry in timetable_entries %}
+                            {% if (entry.day == day or entry.day_of_week == day) and (entry.start_time <= st and entry.end_time >= et or entry.start_time == st) %}
+                                {% set _ = matching_slots.append(entry) %}
+                            {% endif %}
                         {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="text-center py-4 text-muted">
-                        <i class="bi bi-calendar-x fs-3 d-block mb-1 text-secondary opacity-50"></i>
-                        <small>No classes scheduled for {{ day }}</small>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
+
+                        {% if matching_slots %}
+                            {% for slot in matching_slots %}
+                            <div class="card border-0 shadow-sm rounded-3 mb-2 overflow-hidden card-hover-effect
+                                        {% if slot.lecture_type == 'Lab' %}bg-info-subtle border-start border-4 border-info{% else %}bg-primary-subtle border-start border-4 border-primary{% endif %}">
+                                <div class="card-body p-2 position-relative">
+                                    <div class="d-flex justify-content-between align-items-start gap-1">
+                                        <h6 class="fw-bold mb-1 text-dark" style="font-size: 0.85rem; line-height: 1.2;">
+                                            {{ slot.subject_name }}
+                                        </h6>
+                                        <div class="dropdown">
+                                            <button class="btn btn-link text-secondary p-0 border-0 dropdown-toggle opacity-75" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.8rem;">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 text-start" style="font-size: 0.8rem;">
+                                                <li>
+                                                    <a class="dropdown-item py-1" href="{{ url_for('classroom_attendance', slot_id=slot.timetable_id) }}">
+                                                        <i class="bi bi-camera-fill text-primary me-2"></i>Take Attendance
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item py-1" data-bs-toggle="modal" data-bs-target="#editModal{{ slot.timetable_id }}">
+                                                        <i class="bi bi-pencil-fill text-warning me-2"></i>Edit Slot
+                                                    </button>
+                                                </li>
+                                                <li><hr class="dropdown-divider my-1"></li>
+                                                <li>
+                                                    <form action="{{ url_for('delete_timetable_entry', entry_id=slot.timetable_id) }}" method="POST" onsubmit="return confirm('Delete this timetable entry?');">
+                                                        <button type="submit" class="dropdown-item text-danger py-1">
+                                                            <i class="bi bi-trash-fill me-2"></i>Delete
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    {% if slot.subject_code %}
+                                    <small class="fw-semibold text-secondary d-block" style="font-size: 0.75rem;">Code: {{ slot.subject_code }}</small>
+                                    {% endif %}
+
+                                    <div class="mt-1 d-flex flex-wrap gap-1">
+                                        <span class="badge bg-white text-dark border" style="font-size: 0.7rem;">
+                                            <i class="bi bi-mortarboard me-1"></i>{{ slot.semester }} ({{ slot.division }})
+                                        </span>
+                                        <span class="badge bg-dark text-white" style="font-size: 0.7rem;">
+                                            <i class="bi bi-geo-alt me-1"></i>{{ slot.room_number }}
+                                        </span>
+                                        <span class="badge {% if slot.lecture_type == 'Lab' %}bg-info text-white{% else %}bg-primary text-white{% endif %}" style="font-size: 0.7rem;">
+                                            {{ slot.lecture_type or 'Theory' }}
+                                        </span>
+                                    </div>
+
+                                    <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                                        <i class="bi bi-person-circle me-1"></i>{{ slot.teacher_name or slot.teacher_id }}
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Modal: Edit Slot -->
+                            <div class="modal fade text-start" id="editModal{{ slot.timetable_id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content border-0 shadow rounded-4">
+                                        <div class="modal-header border-0 pb-0">
+                                            <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2 text-warning"></i>Edit Timetable Slot</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form action="{{ url_for('edit_timetable_entry', entry_id=slot.timetable_id) }}" method="POST">
+                                            <div class="modal-body p-4">
+                                                {% if session.get('user_role') == 'admin' %}
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-semibold">Faculty / Teacher</label>
+                                                    <select name="teacher_id" class="form-select rounded-3" required>
+                                                        {% for t in all_teachers %}
+                                                        <option value="{{ t.username }}" {% if t.username == slot.teacher_id %}selected{% endif %}>{{ t.full_name or t.username }} ({{ t.username }})</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                {% else %}
+                                                <input type="hidden" name="teacher_id" value="{{ slot.teacher_id }}">
+                                                {% endif %}
+
+                                                <div class="row g-3 mb-3">
+                                                    <div class="col-md-8">
+                                                        <label class="form-label fw-semibold">Subject Name</label>
+                                                        <input type="text" name="subject_name" class="form-control rounded-3" value="{{ slot.subject_name }}" required>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label fw-semibold">Subject Code</label>
+                                                        <input type="text" name="subject_code" class="form-control rounded-3" value="{{ slot.subject_code or '' }}" placeholder="CS401">
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-3 mb-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label fw-semibold">Semester</label>
+                                                        <select name="semester" class="form-select rounded-3" required>
+                                                            {% for s in range(1, 9) %}
+                                                            <option value="Semester {{ s }}" {% if slot.semester == 'Semester ' ~ s %}selected{% endif %}>Semester {{ s }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label fw-semibold">Division</label>
+                                                        <select name="division" class="form-select rounded-3" required>
+                                                            {% for d in ['Division A', 'Division B', 'Division C', 'Division D'] %}
+                                                            <option value="{{ d }}" {% if slot.division == d %}selected{% endif %}>{{ d }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-3 mb-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label fw-semibold">Day</label>
+                                                        <select name="day" class="form-select rounded-3" required>
+                                                            {% for d_item in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+                                                            <option value="{{ d_item }}" {% if slot.day == d_item or slot.day_of_week == d_item %}selected{% endif %}>{{ d_item }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label fw-semibold">Lecture Type</label>
+                                                        <select name="lecture_type" class="form-select rounded-3">
+                                                            <option value="Theory" {% if slot.lecture_type == 'Theory' %}selected{% endif %}>Theory</option>
+                                                            <option value="Lab" {% if slot.lecture_type == 'Lab' %}selected{% endif %}>Lab</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-3 mb-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label fw-semibold">Start Time</label>
+                                                        <input type="time" name="start_time" class="form-control rounded-3" value="{{ slot.start_time }}" required>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label fw-semibold">End Time</label>
+                                                        <input type="time" name="end_time" class="form-control rounded-3" value="{{ slot.end_time }}" required>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-3 mb-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label fw-semibold">Classroom / Room Number</label>
+                                                        <input type="text" name="room_number" class="form-control rounded-3" value="{{ slot.room_number }}" required>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label fw-semibold">Department</label>
+                                                        <input type="text" name="department" class="form-control rounded-3" value="{{ slot.department }}" required>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                                                <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-warning rounded-3 fw-bold">Update Slot</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                        <div class="text-center text-muted py-3 opacity-25">
+                            <i class="bi bi-dash-circle"></i>
+                        </div>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-    {% endfor %}
 </div>
 
-<!-- Modal: AI OCR Upload -->
+<!-- Modal: AI OCR & File Upload -->
 <div class="modal fade" id="ocrUploadModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold"><i class="bi bi-cpu-fill me-2 text-primary"></i>AI Timetable OCR Reader</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-file-earmark-arrow-up-fill me-2 text-primary"></i>Upload Timetable File</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="{{ url_for('ocr_upload_timetable') }}" method="POST" enctype="multipart/form-data">
                 <div class="modal-body p-4">
-                    <p class="text-muted small">Upload your timetable document (<strong>PDF</strong>, <strong>Excel .xlsx</strong>, <strong>JPG</strong>, or <strong>PNG</strong>). The system will extract rows, times, subjects, semesters, and divisions automatically.</p>
+                    <p class="text-muted small">Select your timetable document (<strong>PDF</strong>, <strong>Excel .xlsx</strong>, <strong>CSV</strong>, <strong>JPG</strong>, or <strong>PNG</strong>). The system will automatically parse and map slots into the database.</p>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Select Timetable File <span class="text-danger">*</span></label>
-                        <input type="file" name="timetable_file" class="form-control rounded-3" accept=".pdf,.xlsx,.xls,.png,.jpg,.jpeg" required>
+                        <label class="form-label fw-semibold">Select File <span class="text-danger">*</span></label>
+                        <input type="file" name="timetable_file" class="form-control rounded-3" accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg" required>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0 px-4 pb-4">
                     <button type="button" class="btn btn-light rounded-3" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary rounded-3 fw-semibold">
-                        <i class="bi bi-upload me-1"></i> Extract & Verify OCR
+                        <i class="bi bi-cpu-fill me-1"></i> Parse & Extract Timetable
                     </button>
                 </div>
             </form>
@@ -132,7 +313,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold"><i class="bi bi-calendar-plus me-2 text-primary"></i>Add Class Schedule Slot</h5>
+                <h5 class="modal-title fw-bold"><i class="bi bi-calendar-plus me-2 text-primary"></i>Add Timetable Slot</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="{{ url_for('timetable_management') }}" method="POST">
@@ -142,7 +323,7 @@
                         <label class="form-label fw-semibold">Faculty / Teacher <span class="text-danger">*</span></label>
                         <select name="teacher_username" class="form-select rounded-3" required>
                             {% for t in all_teachers %}
-                            <option value="{{ t.username }}">{{ t.full_name or t.username }} ({{ t.department or 'General' }})</option>
+                            <option value="{{ t.username }}">{{ t.full_name or t.username }} ({{ t.username }})</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -150,9 +331,15 @@
                     <input type="hidden" name="teacher_username" value="{{ session.get('user') }}">
                     {% endif %}
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Subject / Course Name <span class="text-danger">*</span></label>
-                        <input type="text" name="subject_name" class="form-control rounded-3" placeholder="e.g. Data Structures & Algorithms" required>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Subject Name <span class="text-danger">*</span></label>
+                            <input type="text" name="subject_name" class="form-control rounded-3" placeholder="e.g. Digital Signal Processing" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Subject Code</label>
+                            <input type="text" name="subject_code" class="form-control rounded-3" placeholder="CS401">
+                        </div>
                     </div>
 
                     <div class="row g-3 mb-3">
@@ -164,7 +351,6 @@
                                 <option value="Electronics & Communication">Electronics & Communication</option>
                                 <option value="Electrical Engineering">Electrical Engineering</option>
                                 <option value="Mechanical Engineering">Mechanical Engineering</option>
-                                <option value="Civil Engineering">Civil Engineering</option>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -202,18 +388,27 @@
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
+                            <label class="form-label fw-semibold">Lecture Type</label>
+                            <select name="lecture_type" class="form-select rounded-3">
+                                <option value="Theory">Theory</option>
+                                <option value="Lab">Lab</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Classroom / Room Number <span class="text-danger">*</span></label>
+                            <input type="text" name="room_number" class="form-control rounded-3" placeholder="e.g. Room E204" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold">Start Time <span class="text-danger">*</span></label>
                             <input type="time" name="start_time" class="form-control rounded-3" value="09:00" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">End Time <span class="text-danger">*</span></label>
-                            <input type="time" name="end_time" class="form-control rounded-3" value="10:30" required>
+                            <input type="time" name="end_time" class="form-control rounded-3" value="10:00" required>
                         </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Room / Venue</label>
-                        <input type="text" name="room_number" class="form-control rounded-3" placeholder="e.g. Lab 102 / Room 304">
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0 px-4 pb-4">

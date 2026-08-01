@@ -59,7 +59,7 @@
             </li>
             <li class="nav-item">
                 <a href="{{ url_for('timetable_management') }}" class="nav-link {% if active_page == 'timetable' %}active{% endif %}">
-                    <i class="bi bi-calendar3"></i> Timetables (OCR)
+                    <i class="bi bi-calendar3 text-primary"></i> {% if session.get('user_role') == 'admin' %}Teacher Timetables{% else %}My Timetable{% endif %}
                 </a>
             </li>
             <li class="nav-item">

@@ -199,14 +199,18 @@ def student_dashboard():
 @login_required
 def teacher_dashboard():
     teacher_name = session.get('user')
-    stats = database.get_dashboard_stats()
-    my_timetable = database.get_timetable(teacher_username=teacher_name)
-    active_slot = database.get_active_timetable_slot()
+    if session.get('user_role') == 'admin':
+        # Admin viewing teacher dashboard fallback
+        teacher_name = request.args.get('teacher', 'teacher')
+
+    t_stats = database.get_teacher_dashboard_stats(teacher_name)
+    my_timetable = database.get_teacher_timetable(teacher_username=teacher_name)
+    active_slot = database.get_active_lecture_for_teacher(teacher_name)
     low_attendance_students = database.get_short_attendance_students(threshold=50.0)
 
     return render_template('teacher_dashboard.html',
                            active_page='teacher_dashboard',
-                           stats=stats,
+                           t_stats=t_stats,
                            my_timetable=my_timetable,
                            active_slot=active_slot,
                            low_attendance_students=low_attendance_students)
@@ -251,9 +255,12 @@ def register_student():
 @login_required
 def classroom_attendance():
     selected_slot_id = request.args.get('slot_id', type=int)
-    teacher_name = session.get('user') if session.get('user_role') != 'admin' else None
-    active_slot = database.get_active_timetable_slot(teacher_username=teacher_name, slot_id=selected_slot_id)
-    all_slots = database.get_timetable(teacher_username=teacher_name)
+    teacher_name = session.get('user')
+    if session.get('user_role') == 'admin':
+        teacher_name = request.args.get('teacher')
+
+    active_slot = database.get_active_lecture_for_teacher(teacher_name, slot_id=selected_slot_id) if teacher_name else database.get_active_timetable_slot(slot_id=selected_slot_id)
+    all_slots = database.get_teacher_timetable(teacher_username=teacher_name if session.get('user_role') != 'admin' else None)
     return render_template('classroom.html', active_page='classroom', active_slot=active_slot, all_slots=all_slots, result_summary=None)
 
 @app.route('/classroom/upload', methods=['POST'])
@@ -463,24 +470,44 @@ def delete_teacher(user_id):
 @login_required
 def timetable_management():
     if request.method == 'POST':
-        teacher_username = request.form.get('teacher_username', '').strip()
+        teacher_id = request.form.get('teacher_username', '').strip() or request.form.get('teacher_id', '').strip()
         if session.get('user_role') != 'admin':
-            teacher_username = session.get('user')
+            teacher_id = session.get('user')
         
         subject_name = request.form.get('subject_name', '').strip()
-        department = request.form.get('department', '').strip()
+        subject_code = request.form.get('subject_code', '').strip()
+        department = request.form.get('department', 'Computer Science').strip()
         semester = request.form.get('semester', '').strip()
         division = request.form.get('division', 'Division A').strip()
-        day_of_week = request.form.get('day_of_week', '').strip()
+        day = request.form.get('day_of_week', '').strip() or request.form.get('day', '').strip()
         start_time = request.form.get('start_time', '').strip()
         end_time = request.form.get('end_time', '').strip()
         room_number = request.form.get('room_number', '').strip()
+        lecture_type = request.form.get('lecture_type', 'Theory').strip()
+        academic_year = request.form.get('academic_year', '2025-2026').strip()
 
-        if not teacher_username or not subject_name or not day_of_week or not start_time or not end_time:
+        if not teacher_id or not subject_name or not day or not start_time or not end_time:
             flash("Please fill in all required timetable fields.", "error")
         else:
-            database.add_timetable_entry(teacher_username, subject_name, department, semester, day_of_week, start_time, end_time, room_number, division=division)
-            flash(f"Timetable slot for '{subject_name}' ({semester} {division}) added successfully.", "success")
+            success, msg, _ = database.add_teacher_timetable_entry(
+                teacher_id=teacher_id,
+                subject_name=subject_name,
+                department=department,
+                semester=semester,
+                division=division,
+                day=day,
+                start_time=start_time,
+                end_time=end_time,
+                room_number=room_number,
+                lecture_type=lecture_type,
+                academic_year=academic_year,
+                subject_code=subject_code
+            )
+            if success:
+                flash(f"Timetable slot for '{subject_name}' ({semester} {division}) added successfully.", "success")
+            else:
+                flash(msg, "error")
+
         return redirect(url_for('timetable_management'))
 
     filter_teacher = request.args.get('teacher', '')
@@ -490,26 +517,76 @@ def timetable_management():
     if session.get('user_role') != 'admin':
         filter_teacher = session.get('user')
 
-    timetable_entries = database.get_timetable(
+    timetable_entries = database.get_teacher_timetable(
         teacher_username=filter_teacher if filter_teacher else None,
         semester=filter_sem if filter_sem else None,
         division=filter_div if filter_div else None
     )
-    all_teachers = database.get_all_users()
+    all_teachers = database.get_all_teachers()
+    all_subjects = database.get_all_subjects()
 
     return render_template('timetable.html', 
                            active_page='timetable', 
                            timetable_entries=timetable_entries, 
-                           all_teachers=all_teachers, 
+                           all_teachers=all_teachers,
+                           all_subjects=all_subjects, 
                            filter_teacher=filter_teacher,
                            filter_sem=filter_sem,
                            filter_div=filter_div)
 
+@app.route('/timetable/edit/<int:entry_id>', methods=['POST'])
+@login_required
+def edit_timetable_entry(entry_id):
+    teacher_id = request.form.get('teacher_id', '').strip()
+    if session.get('user_role') != 'admin':
+        teacher_id = session.get('user')
+
+    subject_name = request.form.get('subject_name', '').strip()
+    subject_code = request.form.get('subject_code', '').strip()
+    department = request.form.get('department', 'Computer Science').strip()
+    semester = request.form.get('semester', '').strip()
+    division = request.form.get('division', 'Division A').strip()
+    day = request.form.get('day', '').strip()
+    start_time = request.form.get('start_time', '').strip()
+    end_time = request.form.get('end_time', '').strip()
+    room_number = request.form.get('room_number', '').strip()
+    lecture_type = request.form.get('lecture_type', 'Theory').strip()
+    academic_year = request.form.get('academic_year', '2025-2026').strip()
+
+    success, msg = database.update_teacher_timetable_entry(
+        timetable_id=entry_id,
+        teacher_id=teacher_id,
+        subject_name=subject_name,
+        department=department,
+        semester=semester,
+        division=division,
+        day=day,
+        start_time=start_time,
+        end_time=end_time,
+        room_number=room_number,
+        lecture_type=lecture_type,
+        academic_year=academic_year,
+        subject_code=subject_code
+    )
+    if success:
+        flash(msg, "success")
+    else:
+        flash(msg, "error")
+
+    return redirect(url_for('timetable_management'))
+
 @app.route('/timetable/delete/<int:entry_id>', methods=['POST'])
 @login_required
 def delete_timetable_entry(entry_id):
-    database.delete_timetable_entry(entry_id)
-    flash("Timetable entry removed.", "info")
+    database.delete_teacher_timetable_entry(entry_id)
+    flash("Timetable entry removed successfully.", "info")
+    return redirect(url_for('timetable_management'))
+
+@app.route('/timetable/seed-100-teachers', methods=['POST'])
+@admin_required
+def seed_100_teachers():
+    t_cnt, tt_cnt = database.seed_100_teachers_and_timetables()
+    flash(f"Successfully generated/verified 100 teacher accounts (+{t_cnt} new) and created {tt_cnt} conflict-free timetable slots!", "success")
     return redirect(url_for('timetable_management'))
 
 @app.route('/timetable/ocr_upload', methods=['POST'])
@@ -551,20 +628,29 @@ def save_ocr_timetable():
     try:
         entries = json.loads(ocr_json)
         count = 0
+        conflicts = 0
         for item in entries:
-            database.add_timetable_entry(
-                teacher_username=item.get('teacher_username', session.get('user')),
+            t_id = item.get('teacher_id') or item.get('teacher_username') or session.get('user')
+            success, msg, _ = database.add_teacher_timetable_entry(
+                teacher_id=t_id,
                 subject_name=item.get('subject_name', 'Subject'),
                 department=item.get('department', 'Computer Science'),
                 semester=item.get('semester', 'Semester 1'),
-                day_of_week=item.get('day_of_week', 'Monday'),
+                division=item.get('division', 'Division A'),
+                day=item.get('day_of_week') or item.get('day', 'Monday'),
                 start_time=item.get('start_time', '10:00'),
                 end_time=item.get('end_time', '11:00'),
                 room_number=item.get('room_number', 'Room 101'),
-                division=item.get('division', 'Division A')
+                lecture_type=item.get('lecture_type', 'Theory'),
+                academic_year=item.get('academic_year', '2025-2026'),
+                subject_code=item.get('subject_code', '')
             )
-            count += 1
-        flash(f"Successfully saved {count} OCR extracted timetable slots to database!", "success")
+            if success:
+                count += 1
+            else:
+                conflicts += 1
+
+        flash(f"Successfully saved {count} OCR timetable slots to database. ({conflicts} skipped due to conflict)", "success")
     except Exception as e:
         flash(f"Failed to save OCR entries: {e}", "error")
 

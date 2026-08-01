@@ -454,3 +454,40 @@ body {
   }
 }
 
+/* Timetable Matrix Grid Styles */
+.custom-calendar-grid {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.custom-calendar-grid th, .custom-calendar-grid td {
+  border-color: var(--card-border) !important;
+}
+
+.card-hover-effect {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover-effect:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08) !important;
+}
+
+.active-pulse-border {
+  border: 2px solid var(--primary) !important;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4) !important;
+  animation: pulse-ring 2s infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+

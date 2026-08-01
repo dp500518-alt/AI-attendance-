@@ -112,6 +112,55 @@ def init_db():
     );
     """)
 
+    # Teacher Timetable table (Enhanced schema with FKs and full details)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS teacher_timetable (
+        timetable_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        teacher_id TEXT NOT NULL,
+        subject_id INTEGER,
+        subject_code TEXT,
+        subject_name TEXT NOT NULL,
+        semester TEXT NOT NULL,
+        division TEXT NOT NULL DEFAULT 'Division A',
+        department TEXT NOT NULL,
+        day TEXT NOT NULL,
+        start_time TEXT NOT NULL,
+        end_time TEXT NOT NULL,
+        room_number TEXT NOT NULL,
+        lecture_type TEXT NOT NULL DEFAULT 'Theory',
+        academic_year TEXT NOT NULL DEFAULT '2025-2026',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(teacher_id) REFERENCES Users(username) ON DELETE CASCADE,
+        FOREIGN KEY(subject_id) REFERENCES Subjects(id) ON DELETE SET NULL
+    );
+    """)
+
+    # Migrate legacy Timetable rows if teacher_timetable is empty
+    cursor.execute("SELECT COUNT(*) as cnt FROM teacher_timetable")
+    if cursor.fetchone()['cnt'] == 0:
+        cursor.execute("SELECT * FROM Timetable")
+        legacy_rows = cursor.fetchall()
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        for row in legacy_rows:
+            r = dict(row)
+            cursor.execute("""
+            INSERT INTO teacher_timetable (teacher_id, subject_name, department, semester, division, day, start_time, end_time, room_number, lecture_type, academic_year, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Theory', '2025-2026', ?, ?)
+            """, (
+                r.get('teacher_username', 'teacher'),
+                r.get('subject_name', 'Subject'),
+                r.get('department', 'Computer Science'),
+                r.get('semester', 'Semester 1'),
+                r.get('division', 'Division A'),
+                r.get('day_of_week', 'Monday'),
+                r.get('start_time', '09:00'),
+                r.get('end_time', '10:00'),
+                r.get('room_number', 'Room 101'),
+                r.get('created_at', now_str),
+                now_str
+            ))
+
     cursor.execute("PRAGMA table_info(Timetable);")
     tt_cols = [col['name'] for col in cursor.fetchall()]
     if 'division' not in tt_cols:
@@ -640,33 +689,101 @@ def delete_user(user_id):
     conn.close()
 
 # Timetable & Intelligent Detection Functions
-def get_timetable(teacher_username=None, semester=None, division=None, day_of_week=None):
+
+def check_timetable_conflict(teacher_id, day, start_time, end_time, room_number, ignore_id=None):
+    """
+    Checks for scheduling conflicts:
+    1. Same teacher having an overlapping lecture at the same day and time.
+    2. Same room being occupied by another lecture at the same day and time.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    query_teacher = """
+    SELECT timetable_id, subject_name, start_time, end_time, room_number
+    FROM teacher_timetable
+    WHERE teacher_id = ? AND day = ? 
+      AND NOT (end_time <= ? OR start_time >= ?)
+    """
+    params_teacher = [teacher_id, day, start_time, end_time]
+    if ignore_id:
+        query_teacher += " AND timetable_id != ?"
+        params_teacher.append(ignore_id)
+
+    cursor.execute(query_teacher, params_teacher)
+    conflict = cursor.fetchone()
+    if conflict:
+        conn.close()
+        return True, f"Conflict: Teacher '{teacher_id}' already has '{conflict['subject_name']}' ({conflict['start_time']}-{conflict['end_time']}) scheduled on {day}."
+
+    if room_number:
+        query_room = """
+        SELECT timetable_id, teacher_id, subject_name, start_time, end_time
+        FROM teacher_timetable
+        WHERE room_number = ? AND day = ?
+          AND NOT (end_time <= ? OR start_time >= ?)
+        """
+        params_room = [room_number, day, start_time, end_time]
+        if ignore_id:
+            query_room += " AND timetable_id != ?"
+            params_room.append(ignore_id)
+
+        cursor.execute(query_room, params_room)
+        r_conflict = cursor.fetchone()
+        if r_conflict:
+            conn.close()
+            return True, f"Conflict: Room '{room_number}' is already booked by '{r_conflict['teacher_id']}' for '{r_conflict['subject_name']}' ({r_conflict['start_time']}-{r_conflict['end_time']}) on {day}."
+
+    conn.close()
+    return False, ""
+
+def get_teacher_timetable(teacher_username=None, semester=None, division=None, day_of_week=None):
     conn = get_connection()
     cursor = conn.cursor()
 
     query = """
-    SELECT t.*, u.full_name as teacher_name 
-    FROM Timetable t
-    LEFT JOIN Users u ON t.teacher_username = u.username
+    SELECT 
+        tt.timetable_id as id,
+        tt.timetable_id,
+        tt.teacher_id,
+        tt.teacher_id as teacher_username,
+        u.full_name as teacher_name,
+        tt.subject_id,
+        tt.subject_code,
+        tt.subject_name,
+        tt.department,
+        tt.semester,
+        tt.division,
+        tt.day as day_of_week,
+        tt.day,
+        tt.start_time,
+        tt.end_time,
+        tt.room_number,
+        tt.lecture_type,
+        tt.academic_year,
+        tt.created_at,
+        tt.updated_at
+    FROM teacher_timetable tt
+    LEFT JOIN Users u ON tt.teacher_id = u.username
     WHERE 1=1
     """
     params = []
 
     if teacher_username:
-        query += " AND t.teacher_username = ?"
+        query += " AND tt.teacher_id = ?"
         params.append(teacher_username)
     if semester:
-        query += " AND t.semester = ?"
+        query += " AND tt.semester = ?"
         params.append(semester)
     if division:
-        query += " AND t.division = ?"
+        query += " AND tt.division = ?"
         params.append(division)
     if day_of_week:
-        query += " AND t.day_of_week = ?"
-        params.append(day_of_week)
+        query += " AND (tt.day = ? OR tt.day LIKE ?)"
+        params.extend([day_of_week, f"%{day_of_week}%"])
 
     query += """
-    ORDER BY CASE t.day_of_week
+    ORDER BY CASE tt.day
         WHEN 'Monday' THEN 1
         WHEN 'Tuesday' THEN 2
         WHEN 'Wednesday' THEN 3
@@ -675,7 +792,7 @@ def get_timetable(teacher_username=None, semester=None, division=None, day_of_we
         WHEN 'Saturday' THEN 6
         WHEN 'Sunday' THEN 7
         ELSE 8
-    END, t.start_time ASC
+    END, tt.start_time ASC
     """
 
     cursor.execute(query, params)
@@ -683,17 +800,129 @@ def get_timetable(teacher_username=None, semester=None, division=None, day_of_we
     conn.close()
     return [dict(r) for r in rows]
 
-def get_active_timetable_slot(teacher_username=None, day_of_week=None, time_str=None, slot_id=None):
+def get_timetable(teacher_username=None, semester=None, division=None, day_of_week=None):
+    return get_teacher_timetable(teacher_username, semester, division, day_of_week)
+
+def add_teacher_timetable_entry(teacher_id, subject_name, department, semester, division, day, start_time, end_time, room_number='', lecture_type='Theory', academic_year='2025-2026', subject_code=''):
     conn = get_connection()
     cursor = conn.cursor()
 
-    # 1. If explicit slot_id provided (e.g. manual simulation or dropdown override)
+    teacher_id = teacher_id.strip()
+    cursor.execute("SELECT username FROM Users WHERE username = ?", (teacher_id,))
+    u_row = cursor.fetchone()
+    if not u_row:
+        cursor.execute("SELECT username FROM Users WHERE role = 'teacher' LIMIT 1")
+        fallback = cursor.fetchone()
+        teacher_id = fallback[0] if fallback else 'teacher'
+
+    has_conflict, conflict_msg = check_timetable_conflict(teacher_id, day.strip(), start_time.strip(), end_time.strip(), room_number.strip())
+    if has_conflict:
+        conn.close()
+        return False, conflict_msg, None
+
+    subject_id = None
+    cursor.execute("SELECT id, code FROM Subjects WHERE name = ? LIMIT 1", (subject_name.strip(),))
+    s_row = cursor.fetchone()
+    if s_row:
+        subject_id = s_row['id']
+        if not subject_code and s_row['code']:
+            subject_code = s_row['code']
+
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    cursor.execute("""
+    INSERT INTO teacher_timetable (
+        teacher_id, subject_id, subject_code, subject_name, department, semester, division, day, start_time, end_time, room_number, lecture_type, academic_year, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        teacher_id, subject_id, subject_code.strip(), subject_name.strip(),
+        department.strip(), semester.strip(), division.strip(), day.strip(),
+        start_time.strip(), end_time.strip(), room_number.strip() or 'Room 101',
+        lecture_type.strip(), academic_year.strip(), now_str, now_str
+    ))
+
+    tt_id = cursor.lastrowid
+
+    cursor.execute("""
+    INSERT INTO Timetable (teacher_username, subject_name, department, semester, division, day_of_week, start_time, end_time, room_number, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (teacher_id, subject_name.strip(), department.strip(), semester.strip(), division.strip(), day.strip(), start_time.strip(), end_time.strip(), room_number.strip(), now_str))
+
+    conn.commit()
+    conn.close()
+    return True, "Timetable entry added successfully.", tt_id
+
+def add_timetable_entry(teacher_username, subject_name, department, semester, day_of_week, start_time, end_time, room_number='', division='Division A'):
+    success, msg, _ = add_teacher_timetable_entry(teacher_username, subject_name, department, semester, division, day_of_week, start_time, end_time, room_number)
+    return success
+
+def update_teacher_timetable_entry(timetable_id, teacher_id, subject_name, department, semester, division, day, start_time, end_time, room_number='', lecture_type='Theory', academic_year='2025-2026', subject_code=''):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    has_conflict, conflict_msg = check_timetable_conflict(teacher_id.strip(), day.strip(), start_time.strip(), end_time.strip(), room_number.strip(), ignore_id=timetable_id)
+    if has_conflict:
+        conn.close()
+        return False, conflict_msg
+
+    subject_id = None
+    cursor.execute("SELECT id, code FROM Subjects WHERE name = ? LIMIT 1", (subject_name.strip(),))
+    s_row = cursor.fetchone()
+    if s_row:
+        subject_id = s_row['id']
+        if not subject_code and s_row['code']:
+            subject_code = s_row['code']
+
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    cursor.execute("""
+    UPDATE teacher_timetable SET
+        teacher_id = ?,
+        subject_id = ?,
+        subject_code = ?,
+        subject_name = ?,
+        department = ?,
+        semester = ?,
+        division = ?,
+        day = ?,
+        start_time = ?,
+        end_time = ?,
+        room_number = ?,
+        lecture_type = ?,
+        academic_year = ?,
+        updated_at = ?
+    WHERE timetable_id = ?
+    """, (
+        teacher_id.strip(), subject_id, subject_code.strip(), subject_name.strip(),
+        department.strip(), semester.strip(), division.strip(), day.strip(),
+        start_time.strip(), end_time.strip(), room_number.strip(),
+        lecture_type.strip(), academic_year.strip(), now_str, timetable_id
+    ))
+    conn.commit()
+    conn.close()
+    return True, "Timetable slot updated successfully."
+
+def delete_teacher_timetable_entry(entry_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM teacher_timetable WHERE timetable_id = ?", (entry_id,))
+    cursor.execute("DELETE FROM Timetable WHERE id = ?", (entry_id,))
+    conn.commit()
+    conn.close()
+
+def delete_timetable_entry(entry_id):
+    delete_teacher_timetable_entry(entry_id)
+
+def get_active_lecture_for_teacher(teacher_id, day_of_week=None, time_str=None, slot_id=None):
+    conn = get_connection()
+    cursor = conn.cursor()
+
     if slot_id:
         cursor.execute("""
-        SELECT t.*, u.full_name as teacher_name 
-        FROM Timetable t
-        LEFT JOIN Users u ON t.teacher_username = u.username
-        WHERE t.id = ?
+        SELECT tt.*, tt.timetable_id as id, tt.teacher_id as teacher_username, tt.day as day_of_week, u.full_name as teacher_name
+        FROM teacher_timetable tt
+        LEFT JOIN Users u ON tt.teacher_id = u.username
+        WHERE tt.timetable_id = ?
         """, (slot_id,))
         row = cursor.fetchone()
         conn.close()
@@ -706,89 +935,228 @@ def get_active_timetable_slot(teacher_username=None, day_of_week=None, time_str=
     if not time_str:
         time_str = now.strftime("%H:%M")
 
-    # 2. Try exact day & time match
-    if teacher_username:
-        cursor.execute("""
-        SELECT t.*, u.full_name as teacher_name 
-        FROM Timetable t
-        LEFT JOIN Users u ON t.teacher_username = u.username
-        WHERE t.teacher_username = ? AND t.day_of_week = ? AND t.start_time <= ? AND t.end_time >= ?
-        ORDER BY t.start_time ASC
-        LIMIT 1
-        """, (teacher_username, day_of_week, time_str, time_str))
-        row = cursor.fetchone()
-        if row:
-            conn.close()
-            return dict(row)
-
     cursor.execute("""
-    SELECT t.*, u.full_name as teacher_name 
-    FROM Timetable t
-    LEFT JOIN Users u ON t.teacher_username = u.username
-    WHERE t.day_of_week = ? AND t.start_time <= ? AND t.end_time >= ?
-    ORDER BY t.start_time ASC
+    SELECT tt.*, tt.timetable_id as id, tt.teacher_id as teacher_username, tt.day as day_of_week, u.full_name as teacher_name
+    FROM teacher_timetable tt
+    LEFT JOIN Users u ON tt.teacher_id = u.username
+    WHERE tt.teacher_id = ? AND tt.day = ? AND tt.start_time <= ? AND tt.end_time >= ?
+    ORDER BY tt.start_time ASC
     LIMIT 1
-    """, (day_of_week, time_str, time_str))
-
+    """, (teacher_id, day_of_week, time_str, time_str))
     row = cursor.fetchone()
     if row:
         conn.close()
         return dict(row)
 
-    # 3. Fallback: match any slot for today or latest added slot so zero-input auto-detection always works
-    if teacher_username:
-        cursor.execute("""
-        SELECT t.*, u.full_name as teacher_name 
-        FROM Timetable t
-        LEFT JOIN Users u ON t.teacher_username = u.username
-        WHERE t.teacher_username = ? AND t.day_of_week = ?
-        ORDER BY t.start_time ASC
-        LIMIT 1
-        """, (teacher_username, day_of_week))
-        row = cursor.fetchone()
-        if row:
-            conn.close()
-            return dict(row)
+    cursor.execute("""
+    SELECT tt.*, tt.timetable_id as id, tt.teacher_id as teacher_username, tt.day as day_of_week, u.full_name as teacher_name
+    FROM teacher_timetable tt
+    LEFT JOIN Users u ON tt.teacher_id = u.username
+    WHERE tt.teacher_id = ? AND tt.day = ? AND tt.start_time > ?
+    ORDER BY tt.start_time ASC
+    LIMIT 1
+    """, (teacher_id, day_of_week, time_str))
+    row = cursor.fetchone()
+    if row:
+        conn.close()
+        return dict(row)
 
     cursor.execute("""
-    SELECT t.*, u.full_name as teacher_name 
-    FROM Timetable t
-    LEFT JOIN Users u ON t.teacher_username = u.username
-    ORDER BY t.id DESC
+    SELECT tt.*, tt.timetable_id as id, tt.teacher_id as teacher_username, tt.day as day_of_week, u.full_name as teacher_name
+    FROM teacher_timetable tt
+    LEFT JOIN Users u ON tt.teacher_id = u.username
+    WHERE tt.teacher_id = ? AND tt.day = ?
+    ORDER BY tt.start_time ASC
     LIMIT 1
-    """)
+    """, (teacher_id, day_of_week))
+    row = cursor.fetchone()
+    if row:
+        conn.close()
+        return dict(row)
+
+    cursor.execute("""
+    SELECT tt.*, tt.timetable_id as id, tt.teacher_id as teacher_username, tt.day as day_of_week, u.full_name as teacher_name
+    FROM teacher_timetable tt
+    LEFT JOIN Users u ON tt.teacher_id = u.username
+    WHERE tt.teacher_id = ?
+    ORDER BY tt.start_time ASC
+    LIMIT 1
+    """, (teacher_id,))
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
 
-def add_timetable_entry(teacher_username, subject_name, department, semester, day_of_week, start_time, end_time, room_number='', division='Division A'):
+def get_active_timetable_slot(teacher_username=None, day_of_week=None, time_str=None, slot_id=None):
+    if teacher_username:
+        return get_active_lecture_for_teacher(teacher_username, day_of_week, time_str, slot_id)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT timetable_id as id, teacher_id as teacher_username, day as day_of_week, * FROM teacher_timetable ORDER BY timetable_id DESC LIMIT 1")
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_teacher_dashboard_stats(teacher_id):
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Check if teacher_username exists in Users
-    cursor.execute("SELECT username FROM Users WHERE username = ?", (teacher_username.strip(),))
-    user_row = cursor.fetchone()
-    valid_teacher = user_row[0] if user_row else None
+    now = datetime.datetime.now()
+    today_day = now.strftime("%A")
+    today_date = now.strftime("%Y-%m-%d")
+    current_time = now.strftime("%H:%M")
 
-    if not valid_teacher:
-        cursor.execute("SELECT username FROM Users LIMIT 1")
-        fallback_row = cursor.fetchone()
-        valid_teacher = fallback_row[0] if fallback_row else 'teacher'
-
-    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("""
-    INSERT INTO Timetable (teacher_username, subject_name, department, semester, division, day_of_week, start_time, end_time, room_number, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (valid_teacher, subject_name.strip(), department.strip(), semester.strip(), division.strip(), day_of_week.strip(), start_time.strip(), end_time.strip(), room_number.strip(), now_str))
-    conn.commit()
-    conn.close()
+    SELECT tt.*, u.full_name as teacher_name
+    FROM teacher_timetable tt
+    LEFT JOIN Users u ON tt.teacher_id = u.username
+    WHERE tt.teacher_id = ? AND tt.day = ?
+    ORDER BY tt.start_time ASC
+    """, (teacher_id, today_day))
+    today_slots = [dict(r) for r in cursor.fetchall()]
 
-def delete_timetable_entry(entry_id):
+    cursor.execute("SELECT COUNT(*) as cnt FROM teacher_timetable WHERE teacher_id = ?", (teacher_id,))
+    weekly_classes = cursor.fetchone()['cnt']
+
+    current_lecture = None
+    next_lecture = None
+    remaining_classes = 0
+    completed_classes = 0
+
+    for slot in today_slots:
+        if slot['start_time'] <= current_time <= slot['end_time']:
+            current_lecture = slot
+        elif slot['start_time'] > current_time:
+            remaining_classes += 1
+            if not next_lecture:
+                next_lecture = slot
+        elif slot['end_time'] < current_time:
+            completed_classes += 1
+
+    cursor.execute("""
+    SELECT COUNT(DISTINCT student_id) as present
+    FROM Attendance
+    WHERE date = ? AND (timetable_id IN (SELECT timetable_id FROM teacher_timetable WHERE teacher_id = ?) OR timetable_id IS NULL)
+    """, (today_date, teacher_id))
+    present_today = cursor.fetchone()['present']
+
+    cursor.execute("SELECT COUNT(*) as total FROM Students")
+    total_students = cursor.fetchone()['total']
+
+    cursor.execute("SELECT DISTINCT timetable_id FROM Attendance WHERE date = ?", (today_date,))
+    conducted_tt_ids = set([r['timetable_id'] for r in cursor.fetchall() if r['timetable_id']])
+    attendance_pending = sum(1 for s in today_slots if s['timetable_id'] not in conducted_tt_ids)
+
+    reminder_message = None
+    if next_lecture:
+        try:
+            start_12h = datetime.datetime.strptime(next_lecture['start_time'], "%H:%M").strftime("%I:%M %p")
+        except Exception:
+            start_12h = next_lecture['start_time']
+        reminder_message = f"Your next lecture is {next_lecture['subject_name']} for {next_lecture['semester']} {next_lecture['division']} at {start_12h} in Room {next_lecture['room_number']}."
+    elif current_lecture:
+        try:
+            end_12h = datetime.datetime.strptime(current_lecture['end_time'], "%H:%M").strftime("%I:%M %p")
+        except Exception:
+            end_12h = current_lecture['end_time']
+        reminder_message = f"You are currently teaching {current_lecture['subject_name']} for {current_lecture['semester']} {current_lecture['division']} in Room {current_lecture['room_number']} (until {end_12h})."
+    elif today_slots:
+        reminder_message = f"All {len(today_slots)} lectures for today ({today_day}) are completed."
+    else:
+        reminder_message = f"No classes scheduled for today ({today_day})."
+
+    conn.close()
+    return {
+        'today_classes': len(today_slots),
+        'today_slots': today_slots,
+        'current_lecture': current_lecture,
+        'next_lecture': next_lecture,
+        'weekly_classes': weekly_classes,
+        'remaining_classes': remaining_classes,
+        'completed_classes': completed_classes,
+        'present_today': present_today,
+        'total_students': total_students,
+        'attendance_pending': attendance_pending,
+        'reminder_message': reminder_message,
+        'today_day': today_day,
+        'today_date': today_date
+    }
+
+def seed_100_teachers_and_timetables():
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM Timetable WHERE id = ?", (entry_id,))
+
+    pass_hash = generate_password_hash("teacher123")
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    departments = ["Computer Science", "Information Technology", "Electronics", "Electrical", "Mechanical"]
+    subjects_pool = [
+        ("CS401", "Digital Signal Processing", "Computer Science", "Semester 4"),
+        ("CS402", "Data Structures & Algorithms", "Computer Science", "Semester 4"),
+        ("CS403", "Database Management Systems", "Computer Science", "Semester 4"),
+        ("CS601", "Artificial Intelligence & ML", "Computer Science", "Semester 6"),
+        ("CS602", "Computer Networks", "Computer Science", "Semester 6"),
+        ("IT501", "Web Technology", "Information Technology", "Semester 5"),
+        ("IT502", "Software Engineering", "Information Technology", "Semester 5"),
+        ("EC301", "Digital Electronics", "Electronics", "Semester 3"),
+        ("EE401", "Control Systems", "Electrical", "Semester 4"),
+        ("ME501", "Thermodynamics", "Mechanical", "Semester 5")
+    ]
+
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    slots = [
+        ("09:00", "10:00"),
+        ("10:00", "11:00"),
+        ("11:15", "12:15"),
+        ("12:15", "13:15"),
+        ("14:00", "15:00"),
+        ("15:00", "16:00"),
+        ("16:00", "17:00")
+    ]
+    divisions = ["Division A", "Division B", "Division C", "Division D"]
+
+    teachers_created = 0
+    tt_created = 0
+
+    for i in range(1, 101):
+        t_username = f"teacher{i}"
+        t_name = f"Prof. Faculty {i}"
+        dept = departments[(i - 1) % len(departments)]
+
+        cursor.execute("SELECT id FROM Users WHERE username = ?", (t_username,))
+        if not cursor.fetchone():
+            cursor.execute("""
+            INSERT INTO Users (username, password_hash, full_name, department, role, created_at)
+            VALUES (?, ?, ?, ?, 'teacher', ?)
+            """, (t_username, pass_hash, t_name, dept, now_str))
+            teachers_created += 1
+
+        for slot_idx in range(3):
+            day = days[(i + slot_idx) % len(days)]
+            slot_t = slots[(i + slot_idx) % len(slots)]
+            subj_info = subjects_pool[(i + slot_idx) % len(subjects_pool)]
+            div = divisions[(i + slot_idx) % len(divisions)]
+            room = f"Room E{100 + ((i + slot_idx) % 30)}"
+            l_type = "Lab" if slot_idx == 2 else "Theory"
+
+            cursor.execute("""
+            SELECT timetable_id FROM teacher_timetable
+            WHERE (teacher_id = ? OR room_number = ?) AND day = ? AND start_time = ?
+            """, (t_username, room, day, slot_t[0]))
+
+            if not cursor.fetchone():
+                cursor.execute("""
+                INSERT INTO teacher_timetable (
+                    teacher_id, subject_code, subject_name, department, semester, division, day, start_time, end_time, room_number, lecture_type, academic_year, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '2025-2026', ?, ?)
+                """, (
+                    t_username, subj_info[0], subj_info[1], dept, subj_info[3], div, day, slot_t[0], slot_t[1], room, l_type, now_str, now_str
+                ))
+                tt_created += 1
+
     conn.commit()
     conn.close()
+    return teachers_created, tt_created
+
 
 # --- LOGIN HISTORY SECURITY HELPERS ---
 

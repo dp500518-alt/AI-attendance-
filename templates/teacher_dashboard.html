@@ -3,93 +3,162 @@
 {% block page_title %}Faculty Dashboard{% endblock %}
 
 {% block content %}
-<!-- Active Lecture Detection Banner -->
-<div class="alert {% if active_slot %}alert-success{% else %}alert-secondary{% endif %} border-0 shadow-sm p-4 mb-4" role="alert">
+<!-- Next Lecture Reminder Notification Banner -->
+{% if t_stats.reminder_message %}
+<div class="alert alert-primary border-0 shadow-sm p-4 mb-4 rounded-4" role="alert" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white;">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div>
-            {% if active_slot %}
-            <h5 class="fw-bold alert-heading mb-1">
-                <i class="bi bi-broadcast me-2"></i> Active Lecture Auto-Detected: {{ active_slot.subject_name }}
+            <span class="badge bg-warning text-dark mb-2 px-3 py-1 fw-bold text-uppercase" style="letter-spacing: 0.5px;">
+                <i class="bi bi-bell-fill me-1"></i> Upcoming Class Notification
+            </span>
+            <h5 class="fw-bold alert-heading mb-1 text-white">
+                <i class="bi bi-clock-history me-2"></i> {{ t_stats.reminder_message }}
             </h5>
-            <div class="small">
-                <strong>{{ active_slot.day_of_week }}</strong> ({{ active_slot.start_time }} - {{ active_slot.end_time }}) |
-                Semester: <strong>{{ active_slot.semester }}</strong> | Division: <strong>{{ active_slot.division }}</strong> | Room: <strong>{{ active_slot.room_number }}</strong>
+            {% if t_stats.current_lecture %}
+            <div class="small opacity-75 mt-1">
+                Currently conducting: <strong>{{ t_stats.current_lecture.subject_name }}</strong> ({{ t_stats.current_lecture.semester }} {{ t_stats.current_lecture.division }}) in Room {{ t_stats.current_lecture.room_number }}
             </div>
-            {% else %}
-            <h5 class="fw-bold alert-heading mb-1">
-                <i class="bi bi-clock-history me-2"></i> No Active Lecture Slot Right Now
-            </h5>
-            <div class="small text-muted">You can still take classroom photos or upload timetables anytime.</div>
             {% endif %}
         </div>
         <div>
-            <a href="{{ url_for('classroom_attendance') }}" class="btn btn-primary fw-semibold">
-                <i class="bi bi-camera-fill me-1"></i> Capture Classroom Photo
+            {% if active_slot %}
+            <a href="{{ url_for('classroom_attendance', slot_id=active_slot.id) }}" class="btn btn-warning text-dark fw-bold btn-lg rounded-pill shadow">
+                <i class="bi bi-camera-fill me-2"></i> Take Attendance Now
             </a>
+            {% else %}
+            <a href="{{ url_for('classroom_attendance') }}" class="btn btn-light text-primary fw-bold btn-lg rounded-pill shadow">
+                <i class="bi bi-camera-fill me-2"></i> Take Attendance
+            </a>
+            {% endif %}
         </div>
     </div>
 </div>
+{% endif %}
 
-<!-- Teacher Quick Metric Cards -->
+<!-- Teacher Quick Metric Cards Grid (8 Core Cards) -->
 <div class="row g-3 mb-4">
     <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card stat-primary">
+        <div class="stat-card stat-primary h-100">
             <div>
-                <div class="stat-label">Total Enrolled Students</div>
-                <div class="stat-value">{{ stats.total_students }}</div>
+                <div class="stat-label">Today's Classes</div>
+                <div class="stat-value">{{ t_stats.today_classes }}</div>
+                <small class="text-muted d-block mt-1">{{ t_stats.today_day }}</small>
             </div>
             <div class="stat-icon-wrapper">
-                <i class="bi bi-people-fill"></i>
+                <i class="bi bi-calendar-check-fill"></i>
             </div>
         </div>
     </div>
 
     <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card stat-success">
+        <div class="stat-card stat-success h-100">
             <div>
-                <div class="stat-label">Present Today</div>
-                <div class="stat-value">{{ stats.present_today }}</div>
+                <div class="stat-label">Current Lecture</div>
+                <div class="stat-value fs-6 fw-bold text-truncate" style="max-width: 140px;" title="{{ t_stats.current_lecture.subject_name if t_stats.current_lecture else 'None' }}">
+                    {{ t_stats.current_lecture.subject_name if t_stats.current_lecture else 'None' }}
+                </div>
+                <small class="text-success d-block mt-1">
+                    {% if t_stats.current_lecture %}Room {{ t_stats.current_lecture.room_number }}{% else %}No live lecture{% endif %}
+                </small>
             </div>
             <div class="stat-icon-wrapper">
-                <i class="bi bi-check-circle-fill"></i>
+                <i class="bi bi-broadcast"></i>
             </div>
         </div>
     </div>
 
     <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card stat-warning">
+        <div class="stat-card stat-info h-100">
             <div>
-                <div class="stat-label">Absent Today</div>
-                <div class="stat-value">{{ stats.absent_today }}</div>
+                <div class="stat-label">Next Lecture</div>
+                <div class="stat-value fs-6 fw-bold text-truncate" style="max-width: 140px;" title="{{ t_stats.next_lecture.subject_name if t_stats.next_lecture else 'None' }}">
+                    {{ t_stats.next_lecture.subject_name if t_stats.next_lecture else 'None' }}
+                </div>
+                <small class="text-info d-block mt-1">
+                    {% if t_stats.next_lecture %}{{ t_stats.next_lecture.start_time }} @ {{ t_stats.next_lecture.room_number }}{% else %}No remaining slots{% endif %}
+                </small>
             </div>
             <div class="stat-icon-wrapper">
-                <i class="bi bi-x-circle-fill"></i>
+                <i class="bi bi-arrow-right-circle-fill"></i>
             </div>
         </div>
     </div>
 
     <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card stat-info">
+        <div class="stat-card stat-warning h-100">
             <div>
-                <div class="stat-label">Low Attendance (<50%)</div>
-                <div class="stat-value text-danger">{{ low_attendance_students|length }}</div>
+                <div class="stat-label">Total Classes This Week</div>
+                <div class="stat-value">{{ t_stats.weekly_classes }}</div>
+                <small class="text-muted d-block mt-1">Mon – Sat</small>
             </div>
             <div class="stat-icon-wrapper">
-                <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+                <i class="bi bi-calendar-week-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stat-success h-100">
+            <div>
+                <div class="stat-label">Students Present Today</div>
+                <div class="stat-value">{{ t_stats.present_today }}</div>
+                <small class="text-muted d-block mt-1">Out of {{ t_stats.total_students }} enrolled</small>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-person-check-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stat-warning h-100">
+            <div>
+                <div class="stat-label">Attendance Pending</div>
+                <div class="stat-value text-warning">{{ t_stats.attendance_pending }}</div>
+                <small class="text-muted d-block mt-1">Today's unconducted</small>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-hourglass-split"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stat-primary h-100">
+            <div>
+                <div class="stat-label">Remaining Lectures</div>
+                <div class="stat-value">{{ t_stats.remaining_classes }}</div>
+                <small class="text-muted d-block mt-1">Scheduled later today</small>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-clock"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stat-info h-100">
+            <div>
+                <div class="stat-label">Completed Lectures</div>
+                <div class="stat-value">{{ t_stats.completed_classes }}</div>
+                <small class="text-muted d-block mt-1">Finished today</small>
+            </div>
+            <div class="stat-icon-wrapper">
+                <i class="bi bi-check-all"></i>
             </div>
         </div>
     </div>
 </div>
 
 <div class="row g-4">
-    <!-- Faculty Weekly Timetable -->
+    <!-- Faculty Weekly Timetable Overview -->
     <div class="col-12 col-lg-7">
         <div class="custom-card h-100 mb-0">
-            <div class="card-header-custom">
-                <h5 class="card-title-custom">
-                    <i class="bi bi-calendar3 text-primary"></i> My Scheduled Timetable
+            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                <h5 class="card-title-custom mb-0">
+                    <i class="bi bi-calendar3 text-primary me-2"></i> My Personal Timetable
                 </h5>
-                <a href="{{ url_for('timetable_management') }}" class="btn btn-sm btn-outline-primary">Manage & OCR Upload</a>
+                <a href="{{ url_for('timetable_management') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">View Full Grid</a>
             </div>
             <div class="card-body-custom p-0">
                 <div class="table-responsive">
@@ -99,24 +168,39 @@
                                 <th>Day</th>
                                 <th>Time</th>
                                 <th>Subject</th>
+                                <th>Type</th>
                                 <th>Sem / Div</th>
                                 <th>Room</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% if my_timetable %}
                                 {% for slot in my_timetable %}
-                                <tr>
-                                    <td class="fw-semibold text-primary">{{ slot.day_of_week }}</td>
-                                    <td>{{ slot.start_time }} - {{ slot.end_time }}</td>
-                                    <td class="fw-bold">{{ slot.subject_name }}</td>
-                                    <td><span class="badge bg-primary-subtle text-primary">{{ slot.semester }} {{ slot.division }}</span></td>
-                                    <td>{{ slot.room_number or 'TBD' }}</td>
+                                <tr {% if active_slot and active_slot.timetable_id == slot.timetable_id %}class="table-primary border-primary"{% endif %}>
+                                    <td class="fw-semibold text-primary">{{ slot.day }}</td>
+                                    <td><small>{{ slot.start_time }} - {{ slot.end_time }}</small></td>
+                                    <td>
+                                        <div class="fw-bold">{{ slot.subject_name }}</div>
+                                        {% if slot.subject_code %}<small class="text-muted">{{ slot.subject_code }}</small>{% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if slot.lecture_type == 'Lab' %}bg-info-subtle text-info border-info{% else %}bg-primary-subtle text-primary border-primary{% endif %} border">
+                                            {{ slot.lecture_type or 'Theory' }}
+                                        </span>
+                                    </td>
+                                    <td><span class="badge bg-secondary-subtle text-secondary border">{{ slot.semester }} {{ slot.division }}</span></td>
+                                    <td><span class="badge bg-dark-subtle text-dark border"><i class="bi bi-geo-alt me-1"></i>{{ slot.room_number }}</span></td>
+                                    <td>
+                                        <a href="{{ url_for('classroom_attendance', slot_id=slot.timetable_id) }}" class="btn btn-xs btn-primary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                            <i class="bi bi-camera-fill me-1"></i>Take Attendance
+                                        </a>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             {% else %}
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">No timetable entries registered yet. Use OCR Upload to import your timetable!</td>
+                                    <td colspan="7" class="text-center text-muted py-4">No lectures assigned yet. View "My Timetable" to manage.</td>
                                 </tr>
                             {% endif %}
                         </tbody>
@@ -129,11 +213,11 @@
     <!-- Flagged Short Attendance Students -->
     <div class="col-12 col-lg-5">
         <div class="custom-card h-100 mb-0">
-            <div class="card-header-custom">
-                <h5 class="card-title-custom text-danger">
-                    <i class="bi bi-exclamation-circle-fill"></i> Flagged Short Attendance (<50%)
+            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                <h5 class="card-title-custom text-danger mb-0">
+                    <i class="bi bi-exclamation-circle-fill me-2"></i> Short Attendance (<50%)
                 </h5>
-                <a href="{{ url_for('download_report', format='pdf', type='short_attendance') }}" class="btn btn-sm btn-outline-danger">Export PDF</a>
+                <a href="{{ url_for('download_report', format='pdf', type='short_attendance') }}" class="btn btn-sm btn-outline-danger rounded-pill px-3">PDF</a>
             </div>
             <div class="card-body-custom p-0">
                 <div class="table-responsive">

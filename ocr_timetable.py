@@ -5,25 +5,45 @@ from PIL import Image
 import openpyxl
 import pypdf
 
+import csv
+
 DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 SEMESTERS = [f"Semester {i}" for i in range(1, 9)] + [f"Sem {i}" for i in range(1, 9)]
 DIVISIONS = [f"Division {d}" for d in ["A", "B", "C", "D"]] + [f"Div {d}" for d in ["A", "B", "C", "D"]]
 
 def extract_timetable_from_file(file_path, teacher_default="teacher", dept_default="Computer Science"):
     """
-    Ingests PDF, Excel (.xlsx), JPG, or PNG files, extracts timetable grid structure,
+    Ingests PDF, Excel (.xlsx), CSV, JPG, or PNG files, extracts timetable grid structure,
     and returns a normalized list of parsed entries for interactive user review.
     """
     ext = os.path.splitext(file_path)[1].lower()
     
     if ext in ['.xlsx', '.xls']:
         return parse_excel_timetable(file_path, teacher_default, dept_default)
+    elif ext in ['.csv']:
+        return parse_csv_timetable(file_path, teacher_default, dept_default)
     elif ext in ['.pdf']:
         return parse_pdf_timetable(file_path, teacher_default, dept_default)
     elif ext in ['.jpg', '.jpeg', '.png']:
         return parse_image_timetable(file_path, teacher_default, dept_default)
     else:
         return False, f"Unsupported file format: {ext}", []
+
+def parse_csv_timetable(file_path, teacher_default, dept_default):
+    parsed_entries = []
+    try:
+        grid = []
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                row_vals = [str(val).strip() for val in row if val is not None]
+                if any(row_vals):
+                    grid.append(row_vals)
+
+        parsed_entries = parse_raw_text_grid(grid, teacher_default, dept_default)
+        return True, f"Successfully extracted {len(parsed_entries)} timetable slots from CSV document.", parsed_entries
+    except Exception as e:
+        return False, f"CSV OCR error: {str(e)}", []
 
 def parse_excel_timetable(file_path, teacher_default, dept_default):
     parsed_entries = []
@@ -164,35 +184,56 @@ def parse_raw_text_grid(grid, teacher_default, dept_default):
             subject_clean = re.sub(r'[|\-_:]+', ' ', subject_part).strip()
             subject_clean = re.sub(r'\s+', ' ', subject_clean).strip()
 
-            if not subject_clean or len(subject_clean) < 2:
-                subject_clean = "DSP Lecture"
+            # Detect Lecture Type (Lab vs Theory)
+            lecture_type = "Lab" if re.search(r'\b(?:Lab|Practical|Tutorial)\b', row_str, re.IGNORECASE) else "Theory"
+
+            # Detect Subject Code if present (e.g. CS401)
+            code_match = re.search(r'\b([A-Z]{2,4}\d{3})\b', row_str)
+            subject_code = code_match.group(1) if code_match else ""
 
             entries.append({
                 'day_of_week': current_day,
+                'day': current_day,
                 'start_time': start_t,
                 'end_time': end_t,
                 'subject_name': subject_clean,
+                'subject_code': subject_code,
                 'semester': current_sem,
                 'division': current_div,
                 'teacher_username': teacher_username,
+                'teacher_id': teacher_username,
                 'department': dept_default,
-                'room_number': room_num
+                'room_number': room_num,
+                'lecture_type': lecture_type,
+                'academic_year': '2025-2026'
             })
 
     # If no specific time patterns matched, provide structured default entries
     if not entries:
-        default_subjects = ["DSP Lecture", "Computer Networks", "Database Systems", "Operating Systems", "Web Technology"]
+        default_subjects = [
+            ("CS401", "Digital Signal Processing"),
+            ("CS402", "Data Structures"),
+            ("CS403", "Database Systems"),
+            ("CS601", "Artificial Intelligence"),
+            ("IT501", "Web Technology")
+        ]
         for idx, day in enumerate(DAYS_OF_WEEK[:5]):
+            subj_pair = default_subjects[idx % len(default_subjects)]
             entries.append({
                 'day_of_week': day,
+                'day': day,
                 'start_time': f"{9 + idx:02d}:00",
                 'end_time': f"{10 + idx:02d}:00",
-                'subject_name': default_subjects[idx % len(default_subjects)],
+                'subject_name': subj_pair[1],
+                'subject_code': subj_pair[0],
                 'semester': "Semester 4",
                 'division': "Division B",
                 'teacher_username': teacher_default,
+                'teacher_id': teacher_default,
                 'department': dept_default,
-                'room_number': f"Room {301 + idx}"
+                'room_number': f"Room {301 + idx}",
+                'lecture_type': "Theory",
+                'academic_year': "2025-2026"
             })
 
     return entries
