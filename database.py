@@ -262,6 +262,20 @@ def init_db():
     cursor.execute("INSERT OR IGNORE INTO Settings (key, value) VALUES ('recognition_threshold', ?)",
                    (str(config.RECOGNITION_THRESHOLD),))
 
+    # Auto-migrate legacy/old timetable time slots to new Lecture Schedule timing
+    time_mappings = [
+        (('09:00', '10:00'), ('10:30', '11:30')),
+        (('10:00', '11:00'), ('11:30', '12:30')),
+        (('11:15', '12:15'), ('13:10', '14:10')),
+        (('12:15', '13:15'), ('14:10', '15:10')),
+        (('14:00', '15:00'), ('15:30', '16:30')),
+        (('15:00', '16:00'), ('16:30', '17:30')),
+        (('16:00', '17:00'), ('16:30', '17:30')),
+    ]
+    for old_s, new_s in time_mappings:
+        cursor.execute("UPDATE teacher_timetable SET start_time = ?, end_time = ? WHERE start_time = ? AND end_time = ?", (new_s[0], new_s[1], old_s[0], old_s[1]))
+        cursor.execute("UPDATE Timetable SET start_time = ?, end_time = ? WHERE start_time = ? AND end_time = ?", (new_s[0], new_s[1], old_s[0], old_s[1]))
+
     conn.commit()
     conn.close()
 
@@ -1104,13 +1118,12 @@ def seed_100_teachers_and_timetables():
 
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
     slots = [
-        ("09:00", "10:00"),
-        ("10:00", "11:00"),
-        ("11:15", "12:15"),
-        ("12:15", "13:15"),
-        ("14:00", "15:00"),
-        ("15:00", "16:00"),
-        ("16:00", "17:00")
+        ("10:30", "11:30"),
+        ("11:30", "12:30"),
+        ("13:10", "14:10"),
+        ("14:10", "15:10"),
+        ("15:30", "16:30"),
+        ("16:30", "17:30")
     ]
     divisions = ["Division A", "Division B", "Division C", "Division D"]
 

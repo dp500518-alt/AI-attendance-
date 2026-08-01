@@ -217,13 +217,21 @@ def parse_raw_text_grid(grid, teacher_default, dept_default):
             ("CS601", "Artificial Intelligence"),
             ("IT501", "Web Technology")
         ]
+        default_slots = [
+            ("10:30", "11:30"),
+            ("11:30", "12:30"),
+            ("13:10", "14:10"),
+            ("14:10", "15:10"),
+            ("15:30", "16:30"),
+        ]
         for idx, day in enumerate(DAYS_OF_WEEK[:5]):
             subj_pair = default_subjects[idx % len(default_subjects)]
+            slot_t = default_slots[idx % len(default_slots)]
             entries.append({
                 'day_of_week': day,
                 'day': day,
-                'start_time': f"{9 + idx:02d}:00",
-                'end_time': f"{10 + idx:02d}:00",
+                'start_time': slot_t[0],
+                'end_time': slot_t[1],
                 'subject_name': subj_pair[1],
                 'subject_code': subj_pair[0],
                 'semester': "Semester 4",

@@ -84,18 +84,33 @@
             </thead>
             <tbody>
                 {% set standard_slots = [
-                    ('09:00', '10:00', '09:00–10:00 AM'),
-                    ('10:00', '11:00', '10:00–11:00 AM'),
-                    ('11:15', '12:15', '11:15–12:15 PM'),
-                    ('12:15', '13:15', '12:15–01:15 PM'),
-                    ('14:00', '15:00', '02:00–03:00 PM'),
-                    ('15:00', '16:00', '03:00–04:00 PM'),
-                    ('16:00', '17:00', '04:00–05:00 PM')
+                    ('10:30', '11:30', '10:30–11:30 AM', 'Lecture 1', False),
+                    ('11:30', '12:30', '11:30 AM–12:30 PM', 'Lecture 2', False),
+                    ('12:30', '13:10', '12:30–01:10 PM', 'Lunch Break', True),
+                    ('13:10', '14:10', '01:10–02:10 PM', 'Lecture 3', False),
+                    ('14:10', '15:10', '02:10–03:10 PM', 'Lecture 4', False),
+                    ('15:10', '15:30', '03:10–03:30 PM', 'Short Break', True),
+                    ('15:30', '16:30', '03:30–04:30 PM', 'Lecture 5', False),
+                    ('16:30', '17:30', '04:30–05:30 PM', 'Lecture 6', False)
                 ] %}
 
-                {% for st, et, label in standard_slots %}
+                {% for st, et, label, slot_name, is_break in standard_slots %}
+                {% if is_break %}
+                <tr class="table-warning bg-warning bg-opacity-10">
+                    <td class="bg-warning bg-opacity-10 fw-bold text-warning-emphasis text-nowrap py-3 align-middle" style="font-size: 0.85rem;">
+                        <span class="d-block text-warning-emphasis fw-bold mb-1" style="font-size: 0.75rem;"><i class="bi bi-cup-hot-fill me-1"></i>{{ slot_name }}</span>
+                        {{ label }}
+                    </td>
+                    <td colspan="6" class="text-center text-muted fw-semibold py-3 align-middle bg-warning bg-opacity-10" style="font-size: 0.85rem;">
+                        <span class="badge bg-warning text-dark border border-warning shadow-sm px-4 py-2 rounded-pill fs-6 fw-bold">
+                            <i class="bi bi-clock-history me-2"></i>{{ slot_name }} &bull; {{ label }}
+                        </span>
+                    </td>
+                </tr>
+                {% else %}
                 <tr>
                     <td class="bg-light-subtle fw-bold text-secondary text-nowrap py-3 align-middle" style="font-size: 0.85rem;">
+                        <span class="d-block text-primary fw-bold mb-1" style="font-size: 0.75rem;">{{ slot_name }}</span>
                         {{ label }}
                     </td>
                     {% for day in days %}
@@ -275,6 +290,7 @@
                     </td>
                     {% endfor %}
                 </tr>
+                {% endif %}
                 {% endfor %}
             </tbody>
         </table>
@@ -403,11 +419,11 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Start Time <span class="text-danger">*</span></label>
-                            <input type="time" name="start_time" class="form-control rounded-3" value="09:00" required>
+                            <input type="time" name="start_time" class="form-control rounded-3" value="10:30" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">End Time <span class="text-danger">*</span></label>
-                            <input type="time" name="end_time" class="form-control rounded-3" value="10:00" required>
+                            <input type="time" name="end_time" class="form-control rounded-3" value="11:30" required>
                         </div>
                     </div>
                 </div>
