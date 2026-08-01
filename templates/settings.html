@@ -51,8 +51,37 @@
         </div>
     </div>
 
-    <!-- Security & Password Change -->
+    <!-- Security, Password Change & Database Backup -->
     <div class="col-12 col-lg-6">
+        <!-- Database Backup & Restore -->
+        <div class="custom-card mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-database-fill-down text-info"></i> Backup & Restore Database Data
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <p class="text-muted small">
+                    Export a 1-click backup of all registered students, face photos, trained embeddings, timetables, and attendance history to preserve data across container restarts.
+                </p>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <a href="{{ url_for('export_database') }}" class="btn btn-primary-custom rounded-3">
+                        <i class="bi bi-download me-1"></i> Export Database Backup (.json)
+                    </a>
+                </div>
+                <hr>
+                <form action="{{ url_for('import_database') }}" method="POST" enctype="multipart/form-data">
+                    <label class="form-label small fw-semibold">Restore Database from Backup File (.json)</label>
+                    <div class="input-group">
+                        <input type="file" name="backup_file" accept=".json" class="form-control" required>
+                        <button type="submit" class="btn btn-outline-info">
+                            <i class="bi bi-upload me-1"></i> Restore
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="custom-card">
             <div class="card-header-custom">
                 <h5 class="card-title-custom">

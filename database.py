@@ -8,6 +8,15 @@ import config
 
 def get_connection():
     os.makedirs(config.DB_DIR, exist_ok=True)
+    if not os.path.exists(config.DB_PATH):
+        base_db = os.path.join(config.BASE_DIR, 'database', 'smart_attendance.db')
+        if os.path.exists(base_db) and base_db != config.DB_PATH:
+            try:
+                import shutil
+                shutil.copy2(base_db, config.DB_PATH)
+                print(f"Copied base database seed from {base_db} to {config.DB_PATH}")
+            except Exception as e:
+                print(f"Error copying base DB seed: {e}")
     conn = sqlite3.connect(config.DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
@@ -38,6 +47,17 @@ def init_db():
         student_id TEXT PRIMARY KEY,
         embedding TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        FOREIGN KEY(student_id) REFERENCES Students(id) ON DELETE CASCADE
+    );
+    """)
+
+    # StudentPhotos table (stores base64 photo samples directly inside DB for permanent persistence)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS StudentPhotos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id TEXT NOT NULL,
+        photo_b64 TEXT NOT NULL,
+        created_at TEXT NOT NULL,
         FOREIGN KEY(student_id) REFERENCES Students(id) ON DELETE CASCADE
     );
     """)
@@ -1264,5 +1284,146 @@ def get_user_email(username, role=None):
 
     conn.close()
     return f"{username}@student.edu.in"
+
+# --- Student Photos & Backup Sync Functions ---
+
+def save_student_photos(student_id, photos_b64_list):
+    if not photos_b64_list:
+        return
+    conn = get_connection()
+    cursor = conn.cursor()
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    for photo_b64 in photos_b64_list:
+        cursor.execute(
+            "INSERT INTO StudentPhotos (student_id, photo_b64, created_at) VALUES (?, ?, ?)",
+            (str(student_id), photo_b64, now_str)
+        )
+    conn.commit()
+    conn.close()
+
+def get_student_photos(student_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT photo_b64 FROM StudentPhotos WHERE student_id = ? ORDER BY id ASC", (str(student_id),))
+    rows = cursor.fetchall()
+    conn.close()
+    return [r['photo_b64'] for r in rows]
+
+def export_database_json():
+    """
+    Exports a full JSON snapshot dump of database records for permanent cloud persistence.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM Students")
+    students = [dict(r) for r in cursor.fetchall()]
+
+    cursor.execute("SELECT * FROM Embeddings")
+    embeddings = [dict(r) for r in cursor.fetchall()]
+
+    cursor.execute("SELECT * FROM StudentPhotos")
+    photos = [dict(r) for r in cursor.fetchall()]
+
+    cursor.execute("SELECT * FROM Users")
+    users = [dict(r) for r in cursor.fetchall()]
+
+    cursor.execute("SELECT * FROM Timetable")
+    timetable = [dict(r) for r in cursor.fetchall()]
+
+    cursor.execute("SELECT * FROM Attendance")
+    attendance = [dict(r) for r in cursor.fetchall()]
+
+    conn.close()
+
+    return {
+        'version': '1.0',
+        'exported_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'students': students,
+        'embeddings': embeddings,
+        'photos': photos,
+        'users': users,
+        'timetable': timetable,
+        'attendance': attendance
+    }
+
+def import_database_json(data):
+    """
+    Restores database tables from JSON dump data.
+    """
+    if not isinstance(data, dict):
+        return False, "Invalid JSON data structure."
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        if 'students' in data:
+            for s in data['students']:
+                cursor.execute("""
+                INSERT OR REPLACE INTO Students (id, roll_number, name, department, semester, division, email, phone, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (s['id'], s['roll_number'], s['name'], s['department'], s['semester'], s.get('division', 'Division A'), s.get('email', ''), s.get('phone', ''), s.get('created_at', '')))
+
+        if 'photos' in data:
+            for p in data['photos']:
+                cursor.execute("""
+                INSERT OR REPLACE INTO StudentPhotos (student_id, photo_b64, created_at)
+                VALUES (?, ?, ?)
+                """, (p['student_id'], p['photo_b64'], p.get('created_at', '')))
+
+        if 'embeddings' in data:
+            for e in data['embeddings']:
+                cursor.execute("""
+                INSERT OR REPLACE INTO Embeddings (student_id, embedding, updated_at)
+                VALUES (?, ?, ?)
+                """, (e['student_id'], e['embedding'], e.get('updated_at', '')))
+
+        if 'users' in data:
+            for u in data['users']:
+                cursor.execute("""
+                INSERT OR REPLACE INTO Users (username, password_hash, full_name, department, role, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, (u['username'], u['password_hash'], u.get('full_name', ''), u.get('department', ''), u.get('role', 'teacher'), u.get('created_at', '')))
+
+        if 'timetable' in data:
+            for t in data['timetable']:
+                cursor.execute("""
+                INSERT OR REPLACE INTO Timetable (teacher_username, subject_name, department, semester, division, day_of_week, start_time, end_time, room_number, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (t['teacher_username'], t['subject_name'], t['department'], t['semester'], t.get('division', 'Division A'), t['day_of_week'], t['start_time'], t['end_time'], t.get('room_number', ''), t.get('created_at', '')))
+
+        if 'attendance' in data:
+            for a in data['attendance']:
+                cursor.execute("""
+                INSERT OR IGNORE INTO Attendance (student_id, timetable_id, subject_name, semester, division, date, time, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (a['student_id'], a.get('timetable_id'), a.get('subject_name', ''), a.get('semester', ''), a.get('division', ''), a['date'], a['time'], a.get('status', 'Present')))
+
+        conn.commit()
+        conn.close()
+
+        # Re-trigger embedding generation for any missing embeddings
+        from train import train_all_students
+        train_all_students()
+
+        return True, "Database successfully restored from JSON backup."
+    except Exception as err:
+        conn.rollback()
+        conn.close()
+        return False, f"Import failed: {err}"
+
+def sync_backup_seed():
+    """
+    Saves a JSON snapshot seed to database/backup_seed.json.
+    """
+    try:
+        data = export_database_json()
+        target_path = os.path.join(config.BASE_DIR, 'database', 'backup_seed.json')
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        with open(target_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"Could not sync backup seed: {e}")
 
 

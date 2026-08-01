@@ -33,7 +33,7 @@ def register_new_student(student_id, roll_number, name, department, semester, sa
 
     saved_count = 0
 
-    # Save images if provided
+    # Save images to disk and DB if provided
     if sample_images_b64:
         for idx, img_b64 in enumerate(sample_images_b64):
             try:
@@ -45,12 +45,21 @@ def register_new_student(student_id, roll_number, name, department, semester, sa
                     saved_count += 1
             except Exception as e:
                 print(f"Error saving image sample {idx}: {e}")
+        
+        # Persist photos inside SQLite database table for permanent container survival
+        try:
+            database.save_student_photos(student_id, sample_images_b64)
+        except Exception as e:
+            print(f"Error saving photos to DB: {e}")
 
     # Add student entry to Database
     try:
         database.add_student(student_id, roll_number, name, department, semester, division, email, phone)
     except Exception as e:
         return False, f"Database insertion failed: {e}"
+
+    # Sync snapshot JSON seed for permanent repo/cloud persistence
+    database.sync_backup_seed()
 
     # Generate Embeddings if sample photos saved
     embedding_msg = ""

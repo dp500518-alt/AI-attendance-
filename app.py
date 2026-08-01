@@ -772,6 +772,49 @@ def video_feed():
     return Response(camera_instance.generate_mjpeg_stream(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
+# 14. Database Backup & Cloud Restore Routes
+@app.route('/settings/export_db', methods=['GET'])
+@login_required
+def export_database():
+    try:
+        data = database.export_database_json()
+        json_str = json.dumps(data, indent=2)
+        filename = f"smart_attendance_backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        return Response(
+            json_str,
+            mimetype="application/json",
+            headers={"Content-disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        flash(f"Export failed: {e}", "error")
+        return redirect(url_for('system_settings'))
+
+@app.route('/settings/import_db', methods=['POST'])
+@login_required
+def import_database():
+    if 'backup_file' not in request.files:
+        flash("No backup file selected.", "error")
+        return redirect(url_for('system_settings'))
+
+    file = request.files['backup_file']
+    if file.filename == '':
+        flash("No file selected.", "error")
+        return redirect(url_for('system_settings'))
+
+    try:
+        content = file.read().decode('utf-8', errors='ignore')
+        data = json.loads(content)
+        success, msg = database.import_database_json(data)
+        if success:
+            database.sync_backup_seed()
+            flash(msg, "success")
+        else:
+            flash(msg, "error")
+    except Exception as e:
+        flash(f"Import failed: {e}", "error")
+
+    return redirect(url_for('system_settings'))
+
 if __name__ == '__main__':
     print("Starting AI Smart Attendance System on http://127.0.0.1:5000 ...")
     app.run(host='0.0.0.0', port=5000, debug=True)

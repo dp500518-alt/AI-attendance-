@@ -1,0 +1,1223 @@
+{
+  "version": "1.0",
+  "exported_at": "2026-08-01 10:20:44",
+  "students": [
+    {
+      "id": "ST9999",
+      "roll_number": "9999",
+      "name": "Test Student Aarav",
+      "department": "Computer Science",
+      "semester": "Semester 4",
+      "created_at": "2026-07-31 10:59:16",
+      "division": "Division B",
+      "email": "aarav.test@student.edu.in",
+      "phone": "9825099999"
+    }
+  ],
+  "embeddings": [],
+  "photos": [],
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "password_hash": "scrypt:32768:8:1$mQ52Dh285cP2Z7MD$882fae4e1e90a0ba62a61e618b7e89f45276f4b0c1bd45cf39f931890590f60e5c5eda3a1e1995143153dc7b2b9a61be328e1bf47ea35b6de01c674806779640",
+      "created_at": "2026-07-30 20:45:28",
+      "full_name": null,
+      "department": null,
+      "role": "admin",
+      "email": null
+    },
+    {
+      "id": 2,
+      "username": "teacher",
+      "password_hash": "scrypt:32768:8:1$PEteW4ift54MfQQ8$29c6f69583fbfc14f4bcddfda3b3422cc5f4e1d22f594a026171c0a1ee6a2926ba22d3854173f39046ed41eadaa443e90e9a0eb5e90be5d70a09990bce42cf48",
+      "created_at": "2026-07-30 22:58:34",
+      "full_name": "Faculty Teacher",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 3,
+      "username": "vi",
+      "password_hash": "scrypt:32768:8:1$naKI03Bvzh8HjBjA$1c37bc2fc4342caa997abe6d2ea38499335b19ac0217fd7b7d63ebebf1e3d4fe5de2a134dc423d0fabfc9220682b95e963b0330a8ad6ca74927570fc311f157b",
+      "created_at": "2026-07-30 23:00:26",
+      "full_name": "John",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 4,
+      "username": "teacher1",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 1",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 5,
+      "username": "teacher2",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 2",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 6,
+      "username": "teacher3",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 3",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 7,
+      "username": "teacher4",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 4",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 8,
+      "username": "teacher5",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 5",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 9,
+      "username": "teacher6",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 6",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 10,
+      "username": "teacher7",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 7",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 11,
+      "username": "teacher8",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 8",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 12,
+      "username": "teacher9",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 9",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 13,
+      "username": "teacher10",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 10",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 14,
+      "username": "teacher11",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 11",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 15,
+      "username": "teacher12",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 12",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 16,
+      "username": "teacher13",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 13",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 17,
+      "username": "teacher14",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 14",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 18,
+      "username": "teacher15",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 15",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 19,
+      "username": "teacher16",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 16",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 20,
+      "username": "teacher17",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 17",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 21,
+      "username": "teacher18",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 18",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 22,
+      "username": "teacher19",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 19",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 23,
+      "username": "teacher20",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 20",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 24,
+      "username": "teacher21",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 21",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 25,
+      "username": "teacher22",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 22",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 26,
+      "username": "teacher23",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 23",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 27,
+      "username": "teacher24",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 24",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 28,
+      "username": "teacher25",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 25",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 29,
+      "username": "teacher26",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 26",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 30,
+      "username": "teacher27",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 27",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 31,
+      "username": "teacher28",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 28",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 32,
+      "username": "teacher29",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 29",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 33,
+      "username": "teacher30",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 30",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 34,
+      "username": "teacher31",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 31",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 35,
+      "username": "teacher32",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 32",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 36,
+      "username": "teacher33",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 33",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 37,
+      "username": "teacher34",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 34",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 38,
+      "username": "teacher35",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 35",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 39,
+      "username": "teacher36",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 36",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 40,
+      "username": "teacher37",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 37",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 41,
+      "username": "teacher38",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 38",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 42,
+      "username": "teacher39",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 39",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 43,
+      "username": "teacher40",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 40",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 44,
+      "username": "teacher41",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 41",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 45,
+      "username": "teacher42",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 42",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 46,
+      "username": "teacher43",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 43",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 47,
+      "username": "teacher44",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 44",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 48,
+      "username": "teacher45",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 45",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 49,
+      "username": "teacher46",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 46",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 50,
+      "username": "teacher47",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 47",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 51,
+      "username": "teacher48",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 48",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 52,
+      "username": "teacher49",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 49",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 53,
+      "username": "teacher50",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 50",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 54,
+      "username": "teacher51",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 51",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 55,
+      "username": "teacher52",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 52",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 56,
+      "username": "teacher53",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 53",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 57,
+      "username": "teacher54",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 54",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 58,
+      "username": "teacher55",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 55",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 59,
+      "username": "teacher56",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 56",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 60,
+      "username": "teacher57",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 57",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 61,
+      "username": "teacher58",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 58",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 62,
+      "username": "teacher59",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 59",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 63,
+      "username": "teacher60",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 60",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 64,
+      "username": "teacher61",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 61",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 65,
+      "username": "teacher62",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 62",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 66,
+      "username": "teacher63",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 63",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 67,
+      "username": "teacher64",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 64",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 68,
+      "username": "teacher65",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 65",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 69,
+      "username": "teacher66",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 66",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 70,
+      "username": "teacher67",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 67",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 71,
+      "username": "teacher68",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 68",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 72,
+      "username": "teacher69",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 69",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 73,
+      "username": "teacher70",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 70",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 74,
+      "username": "teacher71",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 71",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 75,
+      "username": "teacher72",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 72",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 76,
+      "username": "teacher73",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 73",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 77,
+      "username": "teacher74",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 74",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 78,
+      "username": "teacher75",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 75",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 79,
+      "username": "teacher76",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 76",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 80,
+      "username": "teacher77",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 77",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 81,
+      "username": "teacher78",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 78",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 82,
+      "username": "teacher79",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 79",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 83,
+      "username": "teacher80",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 80",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 84,
+      "username": "teacher81",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 81",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 85,
+      "username": "teacher82",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 82",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 86,
+      "username": "teacher83",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 83",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 87,
+      "username": "teacher84",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 84",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 88,
+      "username": "teacher85",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 85",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 89,
+      "username": "teacher86",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 86",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 90,
+      "username": "teacher87",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 87",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 91,
+      "username": "teacher88",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 88",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 92,
+      "username": "teacher89",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 89",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 93,
+      "username": "teacher90",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 90",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 94,
+      "username": "teacher91",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 91",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 95,
+      "username": "teacher92",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 92",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 96,
+      "username": "teacher93",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 93",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 97,
+      "username": "teacher94",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 94",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 98,
+      "username": "teacher95",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 95",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 99,
+      "username": "teacher96",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 96",
+      "department": "Computer Science",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 100,
+      "username": "teacher97",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 97",
+      "department": "Information Technology",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 101,
+      "username": "teacher98",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 98",
+      "department": "Electronics",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 102,
+      "username": "teacher99",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 99",
+      "department": "Electrical",
+      "role": "teacher",
+      "email": null
+    },
+    {
+      "id": 103,
+      "username": "teacher100",
+      "password_hash": "scrypt:32768:8:1$PCUbSDxd0EyCqkCl$d956004cf45e1fb038e19069f6d4c882683fb4d411cbcd3f81d73905e5cbdeb27dbcdbe406195f9ecdc954f1eb7970eca627137e4760e063baa6de0cb0d8eb40",
+      "created_at": "2026-08-01 08:56:46",
+      "full_name": "Prof. Faculty 100",
+      "department": "Mechanical",
+      "role": "teacher",
+      "email": null
+    }
+  ],
+  "timetable": [
+    {
+      "id": 1,
+      "teacher_username": "admin",
+      "subject_name": "Data Structures",
+      "department": "Computer Science",
+      "semester": "Semester 3",
+      "day_of_week": "Monday",
+      "start_time": "09:00",
+      "end_time": "10:30",
+      "room_number": "Room 101",
+      "created_at": "2026-07-30 22:37:39",
+      "division": "Division A"
+    },
+    {
+      "id": 2,
+      "teacher_username": "vi",
+      "subject_name": "maths2",
+      "department": "Electronics & Communication",
+      "semester": "Semester 2",
+      "day_of_week": "Monday",
+      "start_time": "10:30",
+      "end_time": "11:30",
+      "room_number": "ec-202",
+      "created_at": "2026-07-30 23:18:17",
+      "division": "Division A"
+    },
+    {
+      "id": 3,
+      "teacher_username": "vi",
+      "subject_name": "maths2",
+      "department": "Computer Science",
+      "semester": "Semester 1",
+      "day_of_week": "Monday",
+      "start_time": "01:10",
+      "end_time": "02:10",
+      "room_number": "ec-202",
+      "created_at": "2026-07-30 23:18:51",
+      "division": "Division A"
+    },
+    {
+      "id": 4,
+      "teacher_username": "vi",
+      "subject_name": "maths",
+      "department": "Electronics & Communication",
+      "semester": "Semester 2",
+      "day_of_week": "Wednesday",
+      "start_time": "09:00",
+      "end_time": "10:30",
+      "room_number": "ec-202",
+      "created_at": "2026-07-30 23:19:20",
+      "division": "Division B"
+    },
+    {
+      "id": 5,
+      "teacher_username": "admin",
+      "subject_name": "DSP Lecture",
+      "department": "Computer Science",
+      "semester": "Semester 4",
+      "day_of_week": "Monday",
+      "start_time": "11:30",
+      "end_time": "12:30",
+      "room_number": "Room 302",
+      "created_at": "2026-07-31 09:15:12",
+      "division": "Division B"
+    },
+    {
+      "id": 6,
+      "teacher_username": "admin",
+      "subject_name": "Computer Networks",
+      "department": "Computer Science",
+      "semester": "Semester 4",
+      "day_of_week": "Tuesday",
+      "start_time": "11:00",
+      "end_time": "12:00",
+      "room_number": "Room 303",
+      "created_at": "2026-07-31 09:15:12",
+      "division": "Division B"
+    },
+    {
+      "id": 7,
+      "teacher_username": "admin",
+      "subject_name": "Database Systems",
+      "department": "Computer Science",
+      "semester": "Semester 4",
+      "day_of_week": "Wednesday",
+      "start_time": "10:30",
+      "end_time": "11:30",
+      "room_number": "Lab 2",
+      "created_at": "2026-07-31 09:15:12",
+      "division": "Division B"
+    },
+    {
+      "id": 8,
+      "teacher_username": "admin",
+      "subject_name": "Operating Systems",
+      "department": "Computer Science",
+      "semester": "Semester 4",
+      "day_of_week": "Thursday",
+      "start_time": "02:00",
+      "end_time": "03:00",
+      "room_number": "Room 301",
+      "created_at": "2026-07-31 09:15:12",
+      "division": "Division B"
+    },
+    {
+      "id": 9,
+      "teacher_username": "admin",
+      "subject_name": "Web Technology",
+      "department": "Computer Science",
+      "semester": "Semester 4",
+      "day_of_week": "Friday",
+      "start_time": "11:30",
+      "end_time": "12:30",
+      "room_number": "Room 304",
+      "created_at": "2026-07-31 09:15:12",
+      "division": "Division B"
+    },
+    {
+      "id": 10,
+      "teacher_username": "admin",
+      "subject_name": "DSP Lecture",
+      "department": "Computer Science",
+      "semester": "Semester 4",
+      "day_of_week": "Friday",
+      "start_time": "11:30",
+      "end_time": "12:30",
+      "room_number": "Room 302",
+      "created_at": "2026-07-31 10:59:16",
+      "division": "Division B"
+    },
+    {
+      "id": 11,
+      "teacher_username": "admin",
+      "subject_name": "DSP Lecture",
+      "department": "Computer Science",
+      "semester": "Semester 4",
+      "day_of_week": "Friday",
+      "start_time": "11:30",
+      "end_time": "12:30",
+      "room_number": "Room 302",
+      "created_at": "2026-07-31 10:59:29",
+      "division": "Division B"
+    },
+    {
+      "id": 12,
+      "teacher_username": "teacher",
+      "subject_name": "Digital Signal Processing",
+      "department": "Computer Science",
+      "semester": "Semester 4",
+      "day_of_week": "Monday",
+      "start_time": "10:30",
+      "end_time": "11:30",
+      "room_number": "Room E204",
+      "created_at": "2026-08-01 08:59:06",
+      "division": "Division B"
+    },
+    {
+      "id": 13,
+      "teacher_username": "teacher",
+      "subject_name": "Database Systems Lab",
+      "department": "Computer Science",
+      "semester": "Semester 4",
+      "day_of_week": "Wednesday",
+      "start_time": "15:30",
+      "end_time": "16:30",
+      "room_number": "Lab 2",
+      "created_at": "2026-08-01 08:59:06",
+      "division": "Division B"
+    }
+  ],
+  "attendance": []
+}

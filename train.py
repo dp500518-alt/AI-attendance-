@@ -7,17 +7,33 @@ from recognize import face_engine
 
 def generate_embedding_for_student(student_id):
     """
-    Scans dataset/<student_id>/ folder, extracts embeddings from all images,
-    computes normalized mean embedding vector, and updates SQLite DB.
+    Scans dataset/<student_id>/ folder (or loads photos from SQLite DB),
+    extracts embeddings from all images, computes normalized mean embedding vector, and updates SQLite DB.
     """
-    student_dir = os.path.join(config.DATASET_DIR, str(student_id))
-    if not os.path.exists(student_dir):
-        print(f"Dataset directory for student {student_id} not found: {student_dir}")
-        return False, "Dataset directory not found."
+    student_id = str(student_id).strip()
+    student_dir = os.path.join(config.DATASET_DIR, student_id)
+    os.makedirs(student_dir, exist_ok=True)
 
     image_files = [f for f in os.listdir(student_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+    
+    # Auto-restore from StudentPhotos table in SQLite if disk folder is missing/empty
     if not image_files:
-        print(f"No face images found in {student_dir}")
+        db_photos = database.get_student_photos(student_id)
+        if db_photos:
+            from camera import decode_base64_image
+            for idx, b64_str in enumerate(db_photos):
+                try:
+                    img = decode_base64_image(b64_str)
+                    if img is not None and img.size > 0:
+                        fname = f"sample_{idx+1:02d}.jpg"
+                        fpath = os.path.join(student_dir, fname)
+                        cv2.imwrite(fpath, img)
+                except Exception as e:
+                    print(f"Error restoring photo sample {idx} from DB: {e}")
+            image_files = [f for f in os.listdir(student_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+
+    if not image_files:
+        print(f"No face images found for student {student_id} on disk or database.")
         return False, "No face images found."
 
     embeddings = []
