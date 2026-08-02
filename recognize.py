@@ -185,17 +185,8 @@ class FaceEngine:
     def recognize_faces(self, img_bgr, known_embeddings, threshold=None):
         """
         Detects faces in img_bgr and predicts Student ID using trained SVM/MLP classifier.
+        Hot-reloads classifier in-memory if face_classifier.pkl timestamp updates.
         Falls back to cosine similarity if classifier is unavailable.
-
-        Returns list of dicts:
-        [{
-            'bbox': (x, y, w, h),
-            'student_id': 'S101' or 'Unknown',
-            'similarity': float,  # Confidence score (0.0 to 1.0)
-            'confidence': float,  # Percentage 0-100%
-            'recognition_time_ms': float,
-            'matched': bool
-        }]
         """
         t_start = time.time()
         if threshold is None:
@@ -204,14 +195,11 @@ class FaceEngine:
         detected_faces = self.detect_and_extract(img_bgr)
         matches = []
 
-        # Try loading trained classifier & label encoder
-        classifier = None
-        label_encoder = None
-        try:
-            from model_trainer import load_classifier_and_encoder
-            classifier, label_encoder = load_classifier_and_encoder()
-        except Exception as e_load:
-            classifier, label_encoder = None, None
+        # Check and hot-reload classifier if modified on disk
+        self._check_and_reload_classifier()
+
+        classifier = getattr(self, '_cached_classifier', None)
+        label_encoder = getattr(self, '_cached_label_encoder', None)
 
         for face in detected_faces:
             emb = face['embedding']
@@ -233,7 +221,6 @@ class FaceEngine:
                         best_id = "Unknown"
                         best_score = score
                 except Exception as e_clf:
-                    print(f"Classifier prediction error, falling back to Cosine Similarity: {e_clf}")
                     classifier = None
 
             # 2. Fallback to Cosine Similarity matching against DB embeddings
@@ -256,7 +243,37 @@ class FaceEngine:
                 'matched': is_matched
             })
 
+        # Log recognition event
+        try:
+            from logger import recognition_logger
+            matched_count = sum(1 for m in matches if m['matched'])
+            recognition_logger.info(f"Processed {len(matches)} face(s), {matched_count} matched in {round((time.time()-t_start)*1000, 2)}ms")
+        except Exception:
+            pass
+
         return matches
+
+    def _check_and_reload_classifier(self):
+        """Hot-reloads classifier model if modified on disk without server restart."""
+        try:
+            from model_trainer import CLASSIFIER_PATH, load_classifier_and_encoder
+            if not os.path.exists(CLASSIFIER_PATH):
+                self._cached_classifier = None
+                self._cached_label_encoder = None
+                return
+
+            mtime = os.path.getmtime(CLASSIFIER_PATH)
+            last_mtime = getattr(self, '_last_model_mtime', 0)
+
+            if mtime > last_mtime or getattr(self, '_cached_classifier', None) is None:
+                clf, enc = load_classifier_and_encoder()
+                if clf is not None and enc is not None:
+                    self._cached_classifier = clf
+                    self._cached_label_encoder = enc
+                    self._last_model_mtime = mtime
+                    print(f"Hot-reloaded trained AI classifier (mtime: {mtime}).")
+        except Exception as e:
+            print(f"Error checking/reloading classifier model: {e}")
 
     def annotate_image(self, img_bgr, recognition_results, student_names_map=None):
         """

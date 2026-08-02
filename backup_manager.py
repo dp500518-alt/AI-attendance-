@@ -137,3 +137,30 @@ def restore_backup(zip_filename):
     except Exception as e:
         print(f"Error restoring backup {zip_filename}: {e}")
         return {'success': False, 'message': str(e)}
+
+
+def start_nightly_backup_scheduler():
+    """
+    Starts a background daemon thread that checks every minute and triggers a backup at 01:00 AM every night.
+    """
+    import threading
+    import time
+
+    def _scheduler_loop():
+        print("Nightly 1:00 AM Backup Scheduler started.")
+        last_run_day = None
+        while True:
+            try:
+                now = datetime.datetime.now()
+                # Check if current time is 01:00 AM (between 01:00:00 and 01:00:59) and hasn't run today
+                if now.hour == 1 and now.minute == 0 and last_run_day != now.date():
+                    print(f"Triggering automated nightly 1:00 AM backup for {now.date()}...")
+                    create_backup(notes=f"Automated 1:00 AM Nightly Backup for {now.date()}")
+                    last_run_day = now.date()
+            except Exception as e:
+                print(f"Error in nightly backup scheduler loop: {e}")
+            time.sleep(30)
+
+    t = threading.Thread(target=_scheduler_loop, daemon=True, name="NightlyBackupScheduler")
+    t.start()
+    return t

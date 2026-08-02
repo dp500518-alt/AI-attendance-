@@ -1,11 +1,14 @@
 import os
 import json
 import io
+import time
+import datetime
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, flash, session, Response, send_file, jsonify
 import config
 import database
 import register
+import recognize
 import attendance
 import utils
 import ocr_timetable
@@ -950,6 +953,147 @@ def download_model():
 def api_delete_model():
     success = model_trainer.delete_model_artifacts()
     return jsonify({'success': success, 'message': 'Trained model artifacts reset successfully.'})
+
+# -------------------------------------------------------------
+# Standardized Production REST API Endpoints & Health Diagnostics
+# -------------------------------------------------------------
+SERVER_START_TIME = time.time()
+
+@app.route('/health', methods=['GET'])
+@app.route('/api/health', methods=['GET'])
+def health_check_api():
+    """Live Server, Database, Memory, CPU, and AI Health Diagnostic Endpoint."""
+    import psutil
+    uptime = round(time.time() - SERVER_START_TIME, 2)
+    db_health = database.check_db_integrity()
+    trainer_status = model_trainer.trainer.get_status()
+    model_loaded = (recognize.face_engine.yunet is not None or recognize.face_engine.sface is not None)
+
+    return jsonify({
+        'status': 'healthy',
+        'server': 'AI Smart Attendance Local Production Server',
+        'uptime_seconds': uptime,
+        'database': db_health,
+        'ai_models': {
+            'detector_loaded': recognize.face_engine.yunet is not None,
+            'recognizer_loaded': recognize.face_engine.sface is not None,
+            'classifier_cached': getattr(recognize.face_engine, '_cached_classifier', None) is not None
+        },
+        'training': trainer_status,
+        'system_resources': {
+            'cpu_usage_percent': psutil.cpu_percent(interval=None),
+            'ram_usage_percent': psutil.virtual_memory().percent,
+            'ram_available_mb': round(psutil.virtual_memory().available / (1024 * 1024), 2)
+        },
+        'permanent_storage': config.DATA_DIR,
+        'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+@app.route('/api/server-info', methods=['GET'])
+def server_info_api():
+    """Returns permanent storage directories and system metrics."""
+    database.init_db()
+    students = database.get_all_students()
+    all_embs = database.get_all_embeddings()
+    return jsonify({
+        'server_name': 'Smart Attendance Production Server',
+        'data_root': config.DATA_DIR,
+        'database_path': config.DB_PATH,
+        'total_students': len(students),
+        'total_embeddings': len(all_embs),
+        'directories': {
+            'dataset': config.DATASET_DIR,
+            'embeddings': config.EMBEDDINGS_DIR,
+            'models': config.MODELS_DIR,
+            'backups': config.BACKUPS_DIR,
+            'logs': config.LOGS_DIR
+        }
+    })
+
+@app.route('/api/model-info', methods=['GET'])
+def model_info_api():
+    """Returns trained classifier metadata."""
+    meta = model_trainer.load_training_metadata()
+    return jsonify(meta or {'status': 'No model trained yet'})
+
+@app.route('/api/register', methods=['POST'])
+def api_register_student():
+    """REST API endpoint to register a new student."""
+    data = request.get_json(force=True, silent=True) or request.form
+    student_id = data.get('student_id', '').strip()
+    roll_number = data.get('roll_number', '').strip()
+    name = data.get('name', '').strip()
+    department = data.get('department', 'Computer Science').strip()
+    semester = data.get('semester', 'Semester 1').strip()
+    division = data.get('division', 'Division A').strip()
+    email = data.get('email', '').strip()
+    phone = data.get('phone', '').strip()
+    sample_images_b64 = data.get('sample_images_b64', [])
+
+    if isinstance(sample_images_b64, str):
+        try:
+            sample_images_b64 = json.loads(sample_images_b64)
+        except Exception:
+            sample_images_b64 = [sample_images_b64]
+
+    success, msg = register.register_new_student(
+        student_id, roll_number, name, department, semester, sample_images_b64, division, email, phone
+    )
+    return jsonify({'success': success, 'message': msg})
+
+@app.route('/api/train', methods=['POST'])
+def api_train_model():
+    """REST API endpoint to trigger background classifier training."""
+    started, msg = model_trainer.trainer.start_training_async()
+    return jsonify({'success': started, 'message': msg})
+
+@app.route('/api/recognize', methods=['POST'])
+def api_recognize_faces():
+    """REST API endpoint for real-time face recognition."""
+    img_bgr = None
+    if request.is_json or request.form:
+        data = request.get_json(force=True, silent=True) or request.form
+        b64_str = data.get('image_b64', '')
+        if b64_str:
+            img_bgr = camera.decode_base64_image(b64_str)
+
+    if img_bgr is None and 'photo' in request.files:
+        file = request.files['photo']
+        import numpy as np
+        import cv2
+        file_bytes = np.frombuffer(file.read(), np.uint8)
+        img_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+
+    if img_bgr is None or img_bgr.size == 0:
+        return jsonify({'success': False, 'message': 'Invalid image data received.', 'faces': []}), 400
+
+    database.init_db()
+    known_embeddings = database.get_all_embeddings()
+    results = recognize.face_engine.recognize_faces(img_bgr, known_embeddings)
+
+    return jsonify({
+        'success': True,
+        'detected_faces_count': len(results),
+        'faces': results
+    })
+
+@app.route('/api/backup', methods=['POST'])
+def api_trigger_backup():
+    """REST API endpoint to trigger system backup."""
+    notes = request.json.get('notes', 'REST API Backup') if request.is_json else 'REST API Backup'
+    res = backup_manager.create_backup(notes=notes)
+    return jsonify(res)
+
+@app.route('/api/restore', methods=['POST'])
+def api_trigger_restore():
+    """REST API endpoint to restore system backup."""
+    data = request.get_json(force=True, silent=True) or request.form
+    backup_filename = data.get('backup_filename', '').strip()
+    if not backup_filename:
+        return jsonify({'success': False, 'message': 'backup_filename parameter is required.'}), 400
+
+    res = backup_manager.restore_backup(backup_filename)
+    return jsonify(res)
 
 if __name__ == '__main__':
     print("Starting AI Smart Attendance System on http://127.0.0.1:5000 ...")

@@ -123,6 +123,11 @@ class BackgroundTrainer:
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
         entry = f"[{timestamp}] {message}"
         print(entry)
+        try:
+            from logger import training_logger
+            training_logger.info(message)
+        except Exception:
+            pass
         with self._lock:
             self.logs.append(entry)
             if len(self.logs) > 200:

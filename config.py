@@ -26,6 +26,13 @@ BACKUPS_DIR = os.path.join(DATA_DIR, 'backups')
 TRAINING_DIR = os.path.join(DATA_DIR, 'training')
 DB_PATH = os.path.join(DB_DIR, 'smart_attendance.db')
 
+# Specific Rotated Log File Paths
+SERVER_LOG_PATH = os.path.join(LOGS_DIR, 'server.log')
+RECOGNITION_LOG_PATH = os.path.join(LOGS_DIR, 'recognition.log')
+TRAINING_LOG_PATH = os.path.join(LOGS_DIR, 'training.log')
+ATTENDANCE_LOG_PATH = os.path.join(LOGS_DIR, 'attendance.log')
+ERRORS_LOG_PATH = os.path.join(LOGS_DIR, 'errors.log')
+
 # Create necessary directories
 for path in [DATA_DIR, DATASET_DIR, EMBEDDINGS_DIR, CAPTURED_DIR, ATTENDANCE_DIR, DB_DIR, MODELS_DIR, LOGS_DIR, BACKUPS_DIR, TRAINING_DIR]:
     try:

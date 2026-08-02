@@ -28,6 +28,18 @@ def get_connection():
         pass
     return conn
 
+def check_db_integrity():
+    """Checks SQLite database integrity and returns status."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        res = cursor.execute("PRAGMA quick_check;").fetchone()
+        conn.close()
+        status = res[0] if res else "Unknown"
+        return {'status': 'healthy' if status == 'ok' else status, 'integrity': status}
+    except Exception as e:
+        return {'status': 'error', 'message': str(e)}
+
 def execute_with_retry(query_func, max_retries=5, delay=0.2):
     """
     Executes a database query operation with exponential retry backoff if database is locked or busy.
