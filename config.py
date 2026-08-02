@@ -3,23 +3,31 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_MODELS_DIR = os.path.join(BASE_DIR, 'models')
 
-# Data directory handling for local vs Vercel Serverless
+# Data directory handling: Permanent 24/7 Local Storage vs Vercel Serverless
 if os.environ.get('VERCEL'):
     DATA_DIR = os.environ.get('DATA_DIR', '/tmp/SmartAttendanceData')
-    MODELS_DIR = os.path.join(DATA_DIR, 'models')
 else:
-    DATA_DIR = os.environ.get('DATA_DIR', BASE_DIR)
-    MODELS_DIR = REPO_MODELS_DIR
+    DEFAULT_PERMANENT_ROOT = r'D:\SmartAttendanceServer'
+    try:
+        os.makedirs(DEFAULT_PERMANENT_ROOT, exist_ok=True)
+        DATA_DIR = os.environ.get('DATA_DIR', DEFAULT_PERMANENT_ROOT)
+    except Exception as e:
+        print(f"Notice: Could not access {DEFAULT_PERMANENT_ROOT} ({e}), falling back to BASE_DIR.")
+        DATA_DIR = os.environ.get('DATA_DIR', BASE_DIR)
 
+MODELS_DIR = os.path.join(DATA_DIR, 'models')
 DATASET_DIR = os.path.join(DATA_DIR, 'dataset')
 EMBEDDINGS_DIR = os.path.join(DATA_DIR, 'embeddings')
 CAPTURED_DIR = os.path.join(DATA_DIR, 'captured')
 ATTENDANCE_DIR = os.path.join(DATA_DIR, 'attendance')
 DB_DIR = os.path.join(DATA_DIR, 'database')
+LOGS_DIR = os.path.join(DATA_DIR, 'logs')
+BACKUPS_DIR = os.path.join(DATA_DIR, 'backups')
+TRAINING_DIR = os.path.join(DATA_DIR, 'training')
 DB_PATH = os.path.join(DB_DIR, 'smart_attendance.db')
 
 # Create necessary directories
-for path in [DATA_DIR, DATASET_DIR, EMBEDDINGS_DIR, CAPTURED_DIR, ATTENDANCE_DIR, DB_DIR, MODELS_DIR]:
+for path in [DATA_DIR, DATASET_DIR, EMBEDDINGS_DIR, CAPTURED_DIR, ATTENDANCE_DIR, DB_DIR, MODELS_DIR, LOGS_DIR, BACKUPS_DIR, TRAINING_DIR]:
     try:
         os.makedirs(path, exist_ok=True)
     except Exception as e:

@@ -13,6 +13,7 @@ import login_security
 import analytics_reports
 import notifications
 import model_trainer
+import backup_manager
 from camera import camera_instance, decode_base64_image
 from train import train_all_students
 
@@ -408,7 +409,33 @@ def delete_student_route(student_id):
 @login_required
 def settings():
     threshold = database.get_setting('recognition_threshold', config.RECOGNITION_THRESHOLD)
-    return render_template('settings.html', active_page='settings', threshold=threshold)
+    backup_list = backup_manager.get_backup_list()
+    return render_template('settings.html', active_page='settings', threshold=threshold, backup_list=backup_list)
+
+@app.route('/admin/backup/create', methods=['GET', 'POST'])
+@login_required
+def trigger_permanent_backup():
+    result = backup_manager.create_backup(notes="Manual Admin Trigger")
+    if result['success']:
+        flash(result['message'], "success")
+    else:
+        flash(f"Backup failed: {result['message']}", "error")
+    return redirect(url_for('settings'))
+
+@app.route('/admin/backup/restore', methods=['POST'])
+@login_required
+def restore_zip_backup():
+    filename = request.form.get('backup_filename', '').strip()
+    if not filename:
+        flash("No backup filename specified.", "error")
+        return redirect(url_for('settings'))
+
+    result = backup_manager.restore_backup(filename)
+    if result['success']:
+        flash(result['message'], "success")
+    else:
+        flash(f"Restore failed: {result['message']}", "error")
+    return redirect(url_for('settings'))
 
 @app.route('/settings/update', methods=['POST'])
 @login_required

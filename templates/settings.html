@@ -53,29 +53,74 @@
 
     <!-- Security, Password Change & Database Backup -->
     <div class="col-12 col-lg-6">
-        <!-- Database Backup & Restore -->
-        <div class="custom-card mb-4">
-            <div class="card-header-custom">
-                <h5 class="card-title-custom">
-                    <i class="bi bi-database-fill-down text-info"></i> Backup & Restore Database Data
+        <!-- 24/7 Permanent Storage & Rolling Zip Backup Manager -->
+        <div class="custom-card mb-4 border-start border-4 border-success">
+            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                <h5 class="card-title-custom mb-0">
+                    <i class="bi bi-hdd-network-fill text-success"></i> 24/7 Permanent Storage & Zip Backups
                 </h5>
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">
+                    <i class="bi bi-shield-check me-1"></i> D:\SmartAttendanceServer
+                </span>
             </div>
             <div class="card-body-custom">
-                <p class="text-muted small">
-                    Export a 1-click backup of all registered students, face photos, trained embeddings, timetables, and attendance history to preserve data across container restarts.
+                <p class="text-muted small mb-3">
+                    All DB tables, student datasets, embeddings, models, logs, and backups are stored permanently at <code>D:\SmartAttendanceServer\</code>. Student photos are protected from automatic deletion.
                 </p>
                 <div class="d-flex flex-wrap gap-2 mb-3">
-                    <a href="{{ url_for('export_database') }}" class="btn btn-primary-custom rounded-3">
-                        <i class="bi bi-download me-1"></i> Export Database Backup (.json)
+                    <a href="{{ url_for('trigger_permanent_backup') }}" class="btn btn-success text-white">
+                        <i class="bi bi-archive-fill me-1"></i> Create Zip Backup Now
+                    </a>
+                    <a href="{{ url_for('export_database') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-download me-1"></i> Export JSON Backup
                     </a>
                 </div>
+
+                <!-- Backup History List -->
+                <h6 class="fw-bold small text-dark mt-3 mb-2"><i class="bi bi-clock-history me-1"></i> Available 30-Day Backups</h6>
+                <div class="table-responsive mb-3" style="max-height: 200px; overflow-y: auto;">
+                    <table class="table table-sm align-middle small mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Backup Archive</th>
+                                <th>Size</th>
+                                <th>Created Date</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if backup_list %}
+                            {% for b in backup_list %}
+                            <tr>
+                                <td class="fw-semibold text-primary"><i class="bi bi-file-earmark-zip me-1"></i>{{ b.filename }}</td>
+                                <td>{{ b.size_mb }} MB</td>
+                                <td class="text-muted">{{ b.created_at }}</td>
+                                <td class="text-end">
+                                    <form action="{{ url_for('restore_zip_backup') }}" method="POST" class="d-inline" onsubmit="return confirm('Restore system from {{ b.filename }}? This will replace active database and model files.');">
+                                        <input type="hidden" name="backup_filename" value="{{ b.filename }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0">
+                                            <i class="bi bi-arrow-counterclockwise"></i> Restore
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-3">No zip backup archives generated yet. Click "Create Zip Backup Now" above.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
                 <hr>
                 <form action="{{ url_for('import_database') }}" method="POST" enctype="multipart/form-data">
-                    <label class="form-label small fw-semibold">Restore Database from Backup File (.json)</label>
+                    <label class="form-label small fw-semibold">Restore JSON Seed Backup (.json)</label>
                     <div class="input-group">
                         <input type="file" name="backup_file" accept=".json" class="form-control" required>
                         <button type="submit" class="btn btn-outline-info">
-                            <i class="bi bi-upload me-1"></i> Restore
+                            <i class="bi bi-upload me-1"></i> Import Seed JSON
                         </button>
                     </div>
                 </form>
