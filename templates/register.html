@@ -88,38 +88,47 @@
         <div class="custom-card">
             <div class="card-header-custom">
                 <h5 class="card-title-custom">
-                    <i class="bi bi-camera-fill text-success"></i> Capture / Upload Face Samples (10–15 Photos)
+                    <i class="bi bi-person-badge-fill text-success"></i> Upload Passport Photo or Capture Face Samples
                 </h5>
             </div>
             <div class="card-body-custom text-center">
-                <div class="video-preview-box mb-3">
-                    <video id="regVideo" autoplay playsinline muted></video>
-                </div>
-
-                <!-- Progress Bar -->
-                <div class="progress mb-2" style="height: 18px;">
-                    <div id="regProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-                </div>
-                <div id="regStatusText" class="small text-muted mb-3">Option 1: Click "Start Camera" & "Capture 15 Photos" | Option 2: Upload photo files below.</div>
-
-                <div class="d-flex justify-content-center flex-wrap gap-2 mb-4">
-                    <button type="button" class="btn btn-outline-primary" onclick="startRegistrationWebcam('regVideo')">
-                        <i class="bi bi-camera-video-fill me-1"></i> Start Camera
-                    </button>
-                    <button type="button" id="startCaptureBtn" class="btn btn-success" onclick="onStartCaptureClick()">
-                        <i class="bi bi-disc-fill me-1"></i> Capture 15 Photos
-                    </button>
-                </div>
-
-                <div class="border-top pt-3 text-start">
-                    <label class="form-label small fw-semibold text-dark">
-                        <i class="bi bi-upload text-primary me-1"></i> Option 2: Upload or Snap Face Photos from Phone/PC
+                <!-- Passport Photo Upload Box -->
+                <div class="p-3 bg-light rounded-3 mb-3 border text-start">
+                    <label class="form-label small fw-semibold text-primary mb-1">
+                        <i class="bi bi-file-earmark-person-fill me-1"></i> Option A: Upload Passport Size Image (Recommended - 1 Photo)
                     </label>
-                    <input type="file" id="regFileInput" multiple accept="image/*" class="form-control rounded-3" onchange="handleRegisterFileUpload(this, 'regProgressBar', 'regStatusText')">
-                    <small class="text-muted d-block mt-1">
-                        <i class="bi bi-shield-check me-1"></i>Photos are automatically resized and compressed on your device before upload to prevent network delays.
+                    <input type="file" id="regFileInput" accept="image/*" class="form-control rounded-3 mb-1" onchange="handleRegisterFileUpload(this, 'regProgressBar', 'regStatusText')">
+                    <small class="text-muted d-block">
+                        <i class="bi bi-check-circle-fill text-success me-1"></i>You can upload <strong>1 passport photo</strong> to train the face model for attendance.
                     </small>
                 </div>
+
+                <div class="text-muted text-uppercase small fw-bold my-2">- OR -</div>
+
+                <!-- Live Camera Capture Section -->
+                <div class="p-3 bg-light rounded-3 border">
+                    <label class="form-label small fw-semibold text-dark mb-2">
+                        <i class="bi bi-camera-video-fill text-primary me-1"></i> Option B: Live Webcam Stream Capture
+                    </label>
+                    <div class="video-preview-box mb-3">
+                        <video id="regVideo" autoplay playsinline muted></video>
+                    </div>
+
+                    <div class="d-flex justify-content-center flex-wrap gap-2 mb-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="startRegistrationWebcam('regVideo')">
+                            <i class="bi bi-camera-video-fill me-1"></i> Start Camera
+                        </button>
+                        <button type="button" id="startCaptureBtn" class="btn btn-success btn-sm" onclick="onStartCaptureClick()">
+                            <i class="bi bi-disc-fill me-1"></i> Capture Photos
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Bar & Status Text -->
+                <div class="progress mt-3 mb-2" style="height: 18px;">
+                    <div id="regProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                </div>
+                <div id="regStatusText" class="small text-muted mb-1">Select Option A (Passport Photo) or Option B (Live Webcam) to continue.</div>
             </div>
         </div>
     </div>

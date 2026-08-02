@@ -166,7 +166,7 @@ async function handleRegisterFileUpload(fileInputElem, progressBarId, statusText
         if (!file.type.startsWith('image/')) continue;
 
         try {
-            const b64Data = await compressImageFileToBase64(file, 320, 240, 0.50);
+            const b64Data = await compressImageFileToBase64(file, 640, 640, 0.80);
             regCapturedSamples.push(b64Data);
             processedCount++;
 

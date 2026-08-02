@@ -112,7 +112,23 @@ class FaceEngine:
                             'bbox': (max(0, x), max(0, y), max(1, bw), max(1, bh)),
                             'embedding': norm_feat
                         })
-                return results
+                
+                # If YuNet detected faces, return results
+                if results:
+                    return results
+
+                # Passport Photo Fallback for SFace: If YuNet found no faces (e.g. tightly cropped passport photo),
+                # extract embedding directly from center/full image
+                try:
+                    aligned_face = cv2.resize(img_bgr, (112, 112))
+                    feat = self.sface.feature(aligned_face).flatten()
+                    norm_feat = feat / (np.linalg.norm(feat) + 1e-10)
+                    return [{
+                        'bbox': (0, 0, w, h),
+                        'embedding': norm_feat
+                    }]
+                except Exception as ex_pf:
+                    print(f"Passport fallback extraction error: {ex_pf}")
             except Exception as e:
                 print(f"YuNet/SFace extraction error: {e}")
 
@@ -129,6 +145,17 @@ class FaceEngine:
                     'bbox': (x, y, bw, bh),
                     'embedding': norm_emb
                 })
+
+        # Passport Photo Fallback for Haar Cascade / Raw feature
+        if not results and img_bgr is not None and img_bgr.size > 0:
+            gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+            face_resized = cv2.resize(gray, (64, 64))
+            emb = face_resized.flatten().astype(np.float32)
+            norm_emb = emb / (np.linalg.norm(emb) + 1e-10)
+            results.append({
+                'bbox': (0, 0, w, h),
+                'embedding': norm_emb
+            })
 
         return results
 
