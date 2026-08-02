@@ -871,9 +871,21 @@ def api_training_logs():
 @app.route('/api/training/download')
 @login_required
 def download_model():
-    if os.path.exists(model_trainer.CLASSIFIER_PATH):
-        return send_file(model_trainer.CLASSIFIER_PATH, as_attachment=True, download_name='face_classifier.pkl')
-    flash("No trained face classifier model file found.", "error")
+    clf_path = model_trainer.CLASSIFIER_PATH
+    if not os.path.exists(clf_path) and os.path.exists(os.path.join(config.REPO_MODELS_DIR, 'face_classifier.pkl')):
+        clf_path = os.path.join(config.REPO_MODELS_DIR, 'face_classifier.pkl')
+
+    if os.path.exists(clf_path):
+        return send_file(clf_path, as_attachment=True, download_name='face_classifier.pkl')
+
+    # If no model file exists yet, check if student photos exist to trigger training
+    students = database.get_all_students()
+    if not students:
+        flash("No trained face classifier model found. Please register a student with a passport photo first.", "warning")
+    else:
+        started, msg = model_trainer.trainer.start_training_async()
+        flash("No trained face classifier model file found on disk. Automated background model training has been initiated. Please wait a moment and click Download again.", "info")
+
     return redirect(url_for('training_dashboard'))
 
 @app.route('/api/training/delete', methods=['POST'])
