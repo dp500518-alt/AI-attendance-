@@ -502,6 +502,63 @@ def restore_zip_backup():
         flash(f"Restore failed: {result['message']}", "error")
     return redirect(url_for('settings'))
 
+@app.route('/storage-status', methods=['GET'])
+@admin_required
+def storage_status():
+    import psutil
+    import backup_manager
+
+    def get_dir_size_mb(path):
+        if not os.path.exists(path):
+            return 0.0
+        total = 0
+        for root, _, files in os.walk(path):
+            for f in files:
+                fp = os.path.join(root, f)
+                total += os.path.getsize(fp) if os.path.exists(fp) else 0
+        return round(total / (1024 * 1024), 2)
+
+    db_size = round(os.path.getsize(config.DB_PATH) / (1024 * 1024), 2) if os.path.exists(config.DB_PATH) else 0.0
+    dataset_size = get_dir_size_mb(config.DATASET_DIR)
+    embeddings_size = get_dir_size_mb(config.EMBEDDINGS_DIR)
+    models_size = get_dir_size_mb(config.MODELS_DIR)
+    backups_size = get_dir_size_mb(config.BACKUPS_DIR)
+
+    student_folders = [d for d in os.listdir(config.DATASET_DIR) if os.path.isdir(os.path.join(config.DATASET_DIR, d))] if os.path.exists(config.DATASET_DIR) else []
+    backups = backup_manager.get_backup_list()
+    db_health = database.check_db_integrity()
+
+    # Free disk space
+    try:
+        usage = shutil.disk_usage(config.DATA_DIR)
+        free_space_gb = round(usage.free / (1024 * 1024 * 1024), 2)
+        total_space_gb = round(usage.total / (1024 * 1024 * 1024), 2)
+    except Exception:
+        free_space_gb = 0.0
+        total_space_gb = 0.0
+
+    storage_info = {
+        'data_root': config.DATA_DIR,
+        'db_path': config.DB_PATH,
+        'db_size_mb': db_size,
+        'dataset_path': config.DATASET_DIR,
+        'dataset_size_mb': dataset_size,
+        'student_folder_count': len(student_folders),
+        'embeddings_path': config.EMBEDDINGS_DIR,
+        'embeddings_size_mb': embeddings_size,
+        'models_path': config.MODELS_DIR,
+        'models_size_mb': models_size,
+        'backups_path': config.BACKUPS_DIR,
+        'backups_size_mb': backups_size,
+        'backup_count': len(backups),
+        'last_backup': backups[0] if backups else None,
+        'db_health': db_health,
+        'free_space_gb': free_space_gb,
+        'total_space_gb': total_space_gb
+    }
+
+    return render_template('storage_status.html', storage=storage_info, backups=backups)
+
 @app.route('/settings/update', methods=['POST'])
 @login_required
 def update_settings():

@@ -36,8 +36,10 @@ def get_logger(name: str, log_file_path: str, level=logging.INFO) -> logging.Log
     return logger
 
 # Instantiate dedicated production loggers
+database_logger = get_logger('database', getattr(config, 'DATABASE_LOG_PATH', os.path.join(config.LOGS_DIR, 'database.log')))
 server_logger = get_logger('server', config.SERVER_LOG_PATH)
 recognition_logger = get_logger('recognition', config.RECOGNITION_LOG_PATH)
 training_logger = get_logger('training', config.TRAINING_LOG_PATH)
+backup_logger = get_logger('backup', getattr(config, 'BACKUP_LOG_PATH', os.path.join(config.LOGS_DIR, 'backup.log')))
 attendance_logger = get_logger('attendance', config.ATTENDANCE_LOG_PATH)
 error_logger = get_logger('errors', config.ERRORS_LOG_PATH, level=logging.ERROR)

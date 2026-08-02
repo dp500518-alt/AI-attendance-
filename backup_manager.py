@@ -4,6 +4,7 @@ import datetime
 import json
 import shutil
 import config
+from logger import backup_logger
 
 MAX_BACKUPS = 30
 
@@ -87,7 +88,7 @@ def create_backup(notes="Automated Daily Backup"):
         prune_old_backups(max_keep=MAX_BACKUPS)
 
         size_mb = round(os.path.getsize(zip_filepath) / (1024 * 1024), 2)
-        print(f"Backup created successfully: {zip_filename} ({size_mb} MB)")
+        backup_logger.info(f"Backup created successfully: {zip_filename} ({size_mb} MB)")
         return {
             'success': True,
             'filename': zip_filename,
@@ -97,7 +98,7 @@ def create_backup(notes="Automated Daily Backup"):
         }
 
     except Exception as e:
-        print(f"Error creating backup: {e}")
+        backup_logger.error(f"Error creating backup: {e}")
         return {'success': False, 'message': str(e)}
 
 

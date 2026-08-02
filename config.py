@@ -1,4 +1,5 @@
 import os
+import shutil
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_MODELS_DIR = os.path.join(BASE_DIR, 'models')
@@ -15,6 +16,7 @@ else:
         print(f"Notice: Could not access {DEFAULT_PERMANENT_ROOT} ({e}), falling back to BASE_DIR.")
         DATA_DIR = os.environ.get('DATA_DIR', BASE_DIR)
 
+# Core Permanent Directories
 MODELS_DIR = os.path.join(DATA_DIR, 'models')
 DATASET_DIR = os.path.join(DATA_DIR, 'dataset')
 EMBEDDINGS_DIR = os.path.join(DATA_DIR, 'embeddings')
@@ -24,21 +26,62 @@ DB_DIR = os.path.join(DATA_DIR, 'database')
 LOGS_DIR = os.path.join(DATA_DIR, 'logs')
 BACKUPS_DIR = os.path.join(DATA_DIR, 'backups')
 TRAINING_DIR = os.path.join(DATA_DIR, 'training')
+UPLOADS_DIR = os.path.join(DATA_DIR, 'uploads')
 DB_PATH = os.path.join(DB_DIR, 'smart_attendance.db')
 
 # Specific Rotated Log File Paths
+DATABASE_LOG_PATH = os.path.join(LOGS_DIR, 'database.log')
 SERVER_LOG_PATH = os.path.join(LOGS_DIR, 'server.log')
 RECOGNITION_LOG_PATH = os.path.join(LOGS_DIR, 'recognition.log')
 TRAINING_LOG_PATH = os.path.join(LOGS_DIR, 'training.log')
+BACKUP_LOG_PATH = os.path.join(LOGS_DIR, 'backup.log')
 ATTENDANCE_LOG_PATH = os.path.join(LOGS_DIR, 'attendance.log')
 ERRORS_LOG_PATH = os.path.join(LOGS_DIR, 'errors.log')
 
 # Create necessary directories
-for path in [DATA_DIR, DATASET_DIR, EMBEDDINGS_DIR, CAPTURED_DIR, ATTENDANCE_DIR, DB_DIR, MODELS_DIR, LOGS_DIR, BACKUPS_DIR, TRAINING_DIR]:
+ALL_DIRS = [DATA_DIR, DATASET_DIR, EMBEDDINGS_DIR, CAPTURED_DIR, ATTENDANCE_DIR, DB_DIR, MODELS_DIR, LOGS_DIR, BACKUPS_DIR, TRAINING_DIR, UPLOADS_DIR]
+for path in ALL_DIRS:
     try:
         os.makedirs(path, exist_ok=True)
     except Exception as e:
         print(f"Directory creation notice for {path}: {e}")
+
+def auto_migrate_legacy_data():
+    r"""
+    Safely migrates legacy data from project workspace into D:\SmartAttendanceServer\
+    if it exists and has not yet been copied. Never deletes workspace originals.
+    """
+    if DATA_DIR == BASE_DIR:
+        return  # Same directory, no migration needed
+
+    migrations = [
+        (os.path.join(BASE_DIR, 'database'), DB_DIR),
+        (os.path.join(BASE_DIR, 'dataset'), DATASET_DIR),
+        (os.path.join(BASE_DIR, 'embeddings'), EMBEDDINGS_DIR),
+        (os.path.join(BASE_DIR, 'models'), MODELS_DIR),
+    ]
+
+    for src_dir, dest_dir in migrations:
+        if os.path.exists(src_dir) and os.path.isdir(src_dir):
+            for root, dirs, files in os.walk(src_dir):
+                rel_path = os.path.relpath(root, src_dir)
+                target_root = os.path.join(dest_dir, rel_path) if rel_path != '.' else dest_dir
+                os.makedirs(target_root, exist_ok=True)
+                for file in files:
+                    src_file = os.path.join(root, file)
+                    dest_file = os.path.join(target_root, file)
+                    if not os.path.exists(dest_file):
+                        try:
+                            shutil.copy2(src_file, dest_file)
+                            print(f"[Migration] Copied {file} -> {target_root}")
+                        except Exception as err:
+                            print(f"[Migration Error] Could not copy {file}: {err}")
+
+# Trigger automatic migration on import
+try:
+    auto_migrate_legacy_data()
+except Exception as e:
+    print(f"Auto-migration notice: {e}")
 
 # Face Recognition Settings
 RECOGNITION_THRESHOLD = 0.50  # Cosine similarity threshold for matching

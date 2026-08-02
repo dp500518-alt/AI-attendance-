@@ -7,6 +7,25 @@ import numpy as np
 from werkzeug.security import generate_password_hash, check_password_hash
 import config
 
+import atexit
+from logger import database_logger
+
+_active_connections = set()
+
+def close_all_connections():
+    """Flushes SQLite WAL journals and closes active connections on shutdown."""
+    global _active_connections
+    for conn in list(_active_connections):
+        try:
+            conn.execute("PRAGMA wal_checkpoint(FULL);")
+            conn.close()
+        except Exception:
+            pass
+    _active_connections.clear()
+    database_logger.info("SQLite database connections closed safely. WAL flushed.")
+
+atexit.register(close_all_connections)
+
 def get_connection():
     os.makedirs(config.DB_DIR, exist_ok=True)
     if not os.path.exists(config.DB_PATH):
@@ -15,17 +34,21 @@ def get_connection():
             try:
                 import shutil
                 shutil.copy2(base_db, config.DB_PATH)
-                print(f"Copied base database seed from {base_db} to {config.DB_PATH}")
+                database_logger.info(f"Copied base database seed from {base_db} to {config.DB_PATH}")
             except Exception as e:
-                print(f"Error copying base DB seed: {e}")
+                database_logger.error(f"Error copying base DB seed: {e}")
+
     conn = sqlite3.connect(config.DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
     try:
         conn.execute("PRAGMA journal_mode = WAL;")
         conn.execute("PRAGMA busy_timeout = 30000;")
         conn.execute("PRAGMA foreign_keys = ON;")
+        conn.execute("PRAGMA synchronous = NORMAL;")
     except Exception:
         pass
+
+    _active_connections.add(conn)
     return conn
 
 def check_db_integrity():
