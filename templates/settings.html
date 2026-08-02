@@ -24,21 +24,22 @@
                             Higher values (e.g. 0.65) increase strictness and reduce false positives. Lower values (e.g. 0.40) help in dim lighting or tilted faces.
                         </small>
                     </div>
+                    {% if session.get('user_role') == 'admin' %}
                     <div class="mb-4 pt-3 border-top">
                         <label class="form-label small fw-semibold d-flex justify-content-between align-items-center">
-                            <span><i class="bi bi-cpu-fill text-primary me-1"></i> AI Hardware Accelerator Target</span>
-                            <span class="badge bg-primary rounded-pill">{{ hardware.current_device_used if hardware else 'Auto' }}</span>
+                            <span><i class="bi bi-gear-wide-connected text-primary me-1"></i> Admin AI Accelerator Target</span>
                         </label>
                         <select class="form-select" name="ai_hardware_preference">
                             <option value="Auto" {% if hardware and hardware.preference == 'Auto' %}selected{% endif %}>⚡ Auto Priority (NPU → GPU → CPU)</option>
-                            <option value="Force NPU" {% if hardware and hardware.preference == 'Force NPU' %}selected{% endif %} {% if hardware and not hardware.npu_available %}disabled{% endif %}>🚀 Force NPU (Intel / DirectML NPU)</option>
-                            <option value="Force GPU" {% if hardware and hardware.preference == 'Force GPU' %}selected{% endif %} {% if hardware and not hardware.gpu_available %}disabled{% endif %}>🎮 Force GPU (NVIDIA CUDA / DirectML / OpenCL)</option>
-                            <option value="Force CPU" {% if hardware and hardware.preference == 'Force CPU' %}selected{% endif %}>💻 Force CPU (Multi-core Fallback)</option>
+                            <option value="Force NPU" {% if hardware and hardware.preference == 'Force NPU' %}selected{% endif %} {% if hardware and not hardware.npu_available %}disabled{% endif %}>Force NPU Acceleration</option>
+                            <option value="Force GPU" {% if hardware and hardware.preference == 'Force GPU' %}selected{% endif %} {% if hardware and not hardware.gpu_available %}disabled{% endif %}>Force GPU Acceleration</option>
+                            <option value="Force CPU" {% if hardware and hardware.preference == 'Force CPU' %}selected{% endif %}>Force CPU Execution</option>
                         </select>
                         <small class="text-muted d-block mt-2">
-                            Select preferred hardware target for real-time face recognition. Reconfigures execution provider instantly without server restart.
+                            Admin-only server execution target setting. Details are logged exclusively to <code>logs/server.log</code>.
                         </small>
                     </div>
+                    {% endif %}
 
                     <button type="submit" class="btn btn-primary-custom">
                         <i class="bi bi-check-lg"></i> Save AI Settings

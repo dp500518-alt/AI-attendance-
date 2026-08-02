@@ -108,9 +108,13 @@
                         <input type="file" name="classroom_photo" class="form-control rounded-3" accept="image/*" multiple capture="environment" required>
                         <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i>Select or snap <strong>one or multiple photos</strong> (e.g. left, center, & right side angles) to ensure all student faces are captured.</small>
                     </div>
-                    <button type="submit" class="btn btn-primary-custom w-100 justify-content-center rounded-3">
-                        <i class="bi bi-cpu-fill me-1"></i> Detect & Auto-Mark Attendance
+                    <button type="submit" id="classroomSubmitBtn" class="btn btn-primary-custom w-100 justify-content-center rounded-3">
+                        <i class="bi bi-camera-fill me-1"></i> Detect & Mark Attendance
                     </button>
+                    <div id="classroomProgressMsg" class="alert alert-info py-2 px-3 mt-2 mb-0 d-none text-center small fw-semibold">
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span id="progressStatusText">Uploading Photo...</span>
+                    </div>
                 </form>
             </div>
         </div>
@@ -256,6 +260,19 @@
 
 {% block scripts %}
 <script>
+    function compressAndSubmitClassroomForm(e, form) {
+        const btn = document.getElementById('classroomSubmitBtn');
+        const prog = document.getElementById('classroomProgressMsg');
+        const txt = document.getElementById('progressStatusText');
+        if (btn) btn.disabled = true;
+        if (prog) prog.classList.remove('d-none');
+        if (txt) {
+            txt.innerText = 'Uploading Photo...';
+            setTimeout(() => { txt.innerText = 'Processing Attendance...'; }, 1200);
+        }
+        return true;
+    }
+
     function switchTimetableSlot(slotId) {
         if (slotId) {
             window.location.href = "{{ url_for('classroom_attendance') }}?slot_id=" + slotId;
@@ -265,6 +282,15 @@
     function snapAndSubmitClassroom() {
         const b64 = captureClassroomPhoto('classroomVideo');
         if (b64) {
+            const btn = document.getElementById('classroomSubmitBtn');
+            const prog = document.getElementById('classroomProgressMsg');
+            const txt = document.getElementById('progressStatusText');
+            if (btn) btn.disabled = true;
+            if (prog) prog.classList.remove('d-none');
+            if (txt) {
+                txt.innerText = 'Uploading Photo...';
+                setTimeout(() => { txt.innerText = 'Processing Attendance...'; }, 1200);
+            }
             document.getElementById('snap_b64').value = b64;
             document.getElementById('snapForm').submit();
         }

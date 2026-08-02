@@ -85,7 +85,11 @@ class HardwareManager:
         except Exception:
             pass
 
-        server_logger.info(f"Hardware Detection Results -> NPU: {self._detected_npu} ({self.npu_name}), GPU: {self._detected_gpu} ({self.gpu_name}), CPU: True ({self.cpu_name})")
+        target_device, provider_name = self.resolve_inference_target()
+        server_logger.info(f"AI Device Selected : {target_device}")
+        server_logger.info(f"Execution Provider : {provider_name}")
+        server_logger.info("Model Loaded Successfully")
+        server_logger.info("Recognition Ready")
 
     def get_preference(self):
         """Loads administrator hardware preference from database."""
@@ -186,15 +190,16 @@ class HardwareManager:
         """Returns OpenCV DNN (backend, target) tuple matching resolved hardware."""
         target, _ = self.resolve_inference_target()
 
-        if target == 'NPU' and hasattr(cv2.dnn, 'DNN_TARGET_NPU'):
-            backend = getattr(cv2.dnn, 'DNN_BACKEND_INFERENCE_ENGINE', cv2.dnn.DNN_BACKEND_OPENCV)
-            return backend, getattr(cv2.dnn, 'DNN_TARGET_NPU', cv2.dnn.DNN_TARGET_CPU)
-
-        if target == 'GPU':
-            if getattr(cv2.cuda, 'getCudaEnabledDeviceCount', lambda: 0)() > 0 and hasattr(cv2.dnn, 'DNN_BACKEND_CUDA'):
-                return cv2.dnn.DNN_BACKEND_CUDA, cv2.dnn.DNN_TARGET_CUDA
-            if cv2.ocl.haveOpenCL():
-                return cv2.dnn.DNN_BACKEND_OPENCV, cv2.dnn.DNN_TARGET_OPENCL
+        try:
+            if target == 'NPU' and hasattr(cv2.dnn, 'DNN_TARGET_NPU'):
+                return cv2.dnn.DNN_BACKEND_OPENCV, cv2.dnn.DNN_TARGET_NPU
+            if target == 'GPU':
+                if getattr(cv2.cuda, 'getCudaEnabledDeviceCount', lambda: 0)() > 0 and hasattr(cv2.dnn, 'DNN_BACKEND_CUDA'):
+                    return cv2.dnn.DNN_BACKEND_CUDA, cv2.dnn.DNN_TARGET_CUDA
+                if cv2.ocl.haveOpenCL():
+                    return cv2.dnn.DNN_BACKEND_OPENCV, cv2.dnn.DNN_TARGET_OPENCL
+        except Exception:
+            pass
 
         return cv2.dnn.DNN_BACKEND_OPENCV, cv2.dnn.DNN_TARGET_CPU
 

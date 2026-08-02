@@ -977,18 +977,15 @@ SERVER_START_TIME = time.time()
 def health_check_api():
     """Live Server, Database, Memory, CPU, and AI Health Diagnostic Endpoint."""
     import psutil
-    from hardware_manager import hardware_manager
     uptime = round(time.time() - SERVER_START_TIME, 2)
     db_health = database.check_db_integrity()
     trainer_status = model_trainer.trainer.get_status()
-    hw_status = hardware_manager.get_hardware_status()
 
     return jsonify({
         'status': 'healthy',
         'server': 'AI Smart Attendance Local Production Server',
         'uptime_seconds': uptime,
         'database': db_health,
-        'hardware_accelerator': hw_status,
         'ai_models': {
             'detector_loaded': recognize.face_engine.yunet is not None,
             'recognizer_loaded': recognize.face_engine.sface is not None,
@@ -1005,8 +1002,13 @@ def health_check_api():
     })
 
 @app.route('/api/hardware-info', methods=['GET'])
+@admin_required
 def hardware_info_api():
-    """Returns AI Hardware Accelerator detection, active device, and metrics."""
+    """Localhost-only Admin Diagnostic Endpoint for hardware metrics."""
+    client_ip = request.remote_addr
+    if client_ip not in ['127.0.0.1', '::1', 'localhost']:
+        return jsonify({'error': 'Access denied. Hardware diagnostics restricted to localhost administrators.'}), 403
+
     from hardware_manager import hardware_manager
     return jsonify(hardware_manager.get_hardware_status())
 
