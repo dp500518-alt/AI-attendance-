@@ -168,13 +168,16 @@ def dashboard():
     today_attendance = database.get_attendance_today()
     all_embeddings = database.get_all_embeddings()
     threshold = database.get_setting('recognition_threshold', config.RECOGNITION_THRESHOLD)
+    from hardware_manager import hardware_manager
+    hw_status = hardware_manager.get_hardware_status()
 
     return render_template('index.html',
                            active_page='dashboard',
                            stats=stats,
                            today_attendance=today_attendance,
                            embedded_count=len(all_embeddings),
-                           threshold=threshold)
+                           threshold=threshold,
+                           hardware=hw_status)
 
 @app.route('/student/dashboard')
 @login_required
@@ -470,7 +473,9 @@ def delete_student_route(student_id):
 def settings():
     threshold = database.get_setting('recognition_threshold', config.RECOGNITION_THRESHOLD)
     backup_list = backup_manager.get_backup_list()
-    return render_template('settings.html', active_page='settings', threshold=threshold, backup_list=backup_list)
+    from hardware_manager import hardware_manager
+    hw_status = hardware_manager.get_hardware_status()
+    return render_template('settings.html', active_page='settings', threshold=threshold, backup_list=backup_list, hardware=hw_status)
 
 @app.route('/admin/backup/create', methods=['GET', 'POST'])
 @login_required
@@ -502,6 +507,14 @@ def restore_zip_backup():
 def update_settings():
     threshold = request.form.get('threshold', config.RECOGNITION_THRESHOLD)
     database.set_setting('recognition_threshold', threshold)
+
+    hw_pref = request.form.get('ai_hardware_preference', '').strip()
+    if hw_pref:
+        from hardware_manager import hardware_manager
+        if hardware_manager.set_preference(hw_pref):
+            recognize.face_engine.reconfigure_hardware()
+            flash(f"AI Hardware Preference updated to '{hw_pref}'. Reconfigured execution provider.", "info")
+
     flash(f"Recognition threshold updated to {threshold}.", "success")
     return redirect(url_for('settings'))
 
@@ -964,16 +977,18 @@ SERVER_START_TIME = time.time()
 def health_check_api():
     """Live Server, Database, Memory, CPU, and AI Health Diagnostic Endpoint."""
     import psutil
+    from hardware_manager import hardware_manager
     uptime = round(time.time() - SERVER_START_TIME, 2)
     db_health = database.check_db_integrity()
     trainer_status = model_trainer.trainer.get_status()
-    model_loaded = (recognize.face_engine.yunet is not None or recognize.face_engine.sface is not None)
+    hw_status = hardware_manager.get_hardware_status()
 
     return jsonify({
         'status': 'healthy',
         'server': 'AI Smart Attendance Local Production Server',
         'uptime_seconds': uptime,
         'database': db_health,
+        'hardware_accelerator': hw_status,
         'ai_models': {
             'detector_loaded': recognize.face_engine.yunet is not None,
             'recognizer_loaded': recognize.face_engine.sface is not None,
@@ -988,6 +1003,12 @@ def health_check_api():
         'permanent_storage': config.DATA_DIR,
         'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
+
+@app.route('/api/hardware-info', methods=['GET'])
+def hardware_info_api():
+    """Returns AI Hardware Accelerator detection, active device, and metrics."""
+    from hardware_manager import hardware_manager
+    return jsonify(hardware_manager.get_hardware_status())
 
 @app.route('/api/server-info', methods=['GET'])
 def server_info_api():

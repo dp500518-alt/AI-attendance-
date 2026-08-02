@@ -121,16 +121,36 @@
                         <span class="fw-semibold text-success">{{ threshold }}</span>
                     </li>
                     <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
+                        <span class="text-muted">Current AI Device:</span>
+                        <span class="badge bg-gradient bg-primary rounded-pill"><i class="bi bi-cpu-fill me-1"></i> {{ hardware.current_device_used if hardware else 'CPU' }}</span>
+                    </li>
+                    <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
+                        <span class="text-muted">NPU / GPU / CPU:</span>
+                        <span class="d-flex gap-1">
+                            <span class="badge {{ 'bg-success' if hardware and hardware.npu_available else 'bg-secondary' }}">NPU: {{ 'Yes' if hardware and hardware.npu_available else 'No' }}</span>
+                            <span class="badge {{ 'bg-success' if hardware and hardware.gpu_available else 'bg-secondary' }}">GPU: {{ 'Yes' if hardware and hardware.gpu_available else 'No' }}</span>
+                            <span class="badge bg-success">CPU: Yes</span>
+                        </span>
+                    </li>
+                    <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
+                        <span class="text-muted">Inference Latency:</span>
+                        <span class="fw-semibold text-primary">{{ hardware.last_inference_time_ms if hardware else 0 }} ms</span>
+                    </li>
+                    <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
+                        <span class="text-muted">Training Duration:</span>
+                        <span class="fw-semibold text-primary">{{ hardware.last_training_time_seconds if hardware else 0 }} s</span>
+                    </li>
+                    <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
+                        <span class="text-muted">Memory Usage:</span>
+                        <span class="fw-semibold text-info">{{ hardware.memory.ram_usage_percent if hardware else 0 }}% ({{ hardware.memory.ram_available_mb if hardware else 0 }} MB free)</span>
+                    </li>
+                    <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
                         <span class="text-muted">AI Face Classifier:</span>
                         {% if training_meta and training_meta.training_date != 'Not Trained' %}
                         <span class="badge bg-success rounded-pill">{{ training_meta.accuracy }}% Acc ({{ training_meta.model_type }})</span>
                         {% else %}
                         <span class="badge bg-warning rounded-pill">Not Trained</span>
                         {% endif %}
-                    </li>
-                    <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
-                        <span class="text-muted">Augmented Dataset:</span>
-                        <span class="fw-semibold text-primary">{{ training_meta.total_augmented_images if training_meta else 0 }} photos</span>
                     </li>
                     <li class="list-group-item bg-transparent d-flex justify-content-between px-0 pt-3">
                         <a href="{{ url_for('training_dashboard') }}" class="btn btn-sm btn-outline-primary w-100">

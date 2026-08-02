@@ -368,8 +368,15 @@ class BackgroundTrainer:
                     mean_emb = mean_emb / norm
                 database.save_embedding(str(sid), mean_emb)
 
-            self.log(f"Model training finished successfully in {training_time}s! Accuracy: {metadata['accuracy']}%.")
-            self.set_status(100, f"Completed: Accuracy {metadata['accuracy']}% ({model_type})")
+            # Record training duration in hardware_manager
+            try:
+                from hardware_manager import hardware_manager
+                hardware_manager.record_training_time(training_time)
+            except Exception:
+                pass
+
+            self.log(f"Model training pipeline completed successfully in {training_time}s! Accuracy: {round(acc*100, 2)}%.")
+            self.set_status(100, f"Completed in {training_time}s. Accuracy: {round(acc*100, 2)}%")
 
         except Exception as e:
             self.log(f"Fatal error during model training: {e}")

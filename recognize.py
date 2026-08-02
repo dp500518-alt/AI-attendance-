@@ -40,19 +40,27 @@ class FaceEngine:
             self._ensure_model_file(config.SFACE_MODEL_URL, config.SFACE_PATH)
 
             if os.path.exists(config.YUNET_PATH) and os.path.exists(config.SFACE_PATH):
+                from hardware_manager import hardware_manager
+                backend, target = hardware_manager.get_opencv_dnn_target_backend()
+
                 self.yunet = cv2.FaceDetectorYN.create(
                     model=config.YUNET_PATH,
                     config="",
                     input_size=(320, 320),
                     score_threshold=0.6,
                     nms_threshold=0.3,
-                    top_k=5000
+                    top_k=5000,
+                    backend_id=backend,
+                    target_id=target
                 )
                 self.sface = cv2.FaceRecognizerSF.create(
                     model=config.SFACE_PATH,
-                    config=""
+                    config="",
+                    backend_id=backend,
+                    target_id=target
                 )
-                print("OpenCV YuNet & SFace models loaded successfully.")
+                active_target, provider = hardware_manager.resolve_inference_target()
+                print(f"OpenCV YuNet & SFace models loaded successfully on {active_target} ({provider}).")
                 return
         except Exception as e:
             print(f"OpenCV YuNet/SFace initialization error: {e}")
@@ -243,15 +251,24 @@ class FaceEngine:
                 'matched': is_matched
             })
 
-        # Log recognition event
+        # Log recognition event & record latency in hardware_manager
+        total_time_ms = round((time.time() - t_start) * 1000, 2)
         try:
+            from hardware_manager import hardware_manager
+            hardware_manager.record_inference_time(total_time_ms)
+
             from logger import recognition_logger
             matched_count = sum(1 for m in matches if m['matched'])
-            recognition_logger.info(f"Processed {len(matches)} face(s), {matched_count} matched in {round((time.time()-t_start)*1000, 2)}ms")
+            recognition_logger.info(f"Processed {len(matches)} face(s), {matched_count} matched in {total_time_ms}ms on {hardware_manager.resolve_inference_target()[0]}")
         except Exception:
             pass
 
         return matches
+
+    def reconfigure_hardware(self):
+        """Re-initializes models with updated hardware execution provider targets."""
+        print("Reconfiguring AI models for updated hardware target...")
+        self._init_models()
 
     def _check_and_reload_classifier(self):
         """Hot-reloads classifier model if modified on disk without server restart."""
