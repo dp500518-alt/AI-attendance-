@@ -17,13 +17,16 @@ import database
 from recognize import face_engine
 
 # Path configurations for trained model artifacts
-MODEL_DIR = os.path.join(config.BASE_DIR, 'models')
+MODEL_DIR = config.MODELS_DIR
 CLASSIFIER_PATH = os.path.join(MODEL_DIR, 'face_classifier.pkl')
 LABEL_ENCODER_PATH = os.path.join(MODEL_DIR, 'label_encoder.pkl')
 METADATA_PATH = os.path.join(MODEL_DIR, 'training_metadata.json')
 DATE_FILE_PATH = os.path.join(MODEL_DIR, 'training_date.txt')
 
-os.makedirs(MODEL_DIR, exist_ok=True)
+try:
+    os.makedirs(MODEL_DIR, exist_ok=True)
+except Exception as e:
+    print(f"MODEL_DIR creation notice: {e}")
 
 
 def augment_image(img_bgr, target_count=20):
@@ -148,9 +151,14 @@ class BackgroundTrainer:
         if self.is_training:
             return False, "Training is already in progress."
 
-        thread = threading.Thread(target=self._run_pipeline, daemon=True)
-        thread.start()
-        return True, "Background model training started."
+        if os.environ.get('VERCEL'):
+            # On Vercel serverless, run synchronously to complete before function response finishes
+            self._run_pipeline()
+            return True, "Model training completed."
+        else:
+            thread = threading.Thread(target=self._run_pipeline, daemon=True)
+            thread.start()
+            return True, "Background model training started."
 
     def _run_pipeline(self):
         with self._lock:
@@ -375,9 +383,13 @@ trainer = BackgroundTrainer()
 
 def load_training_metadata():
     """Loads metadata JSON or returns default empty structure."""
-    if os.path.exists(METADATA_PATH):
+    meta_path = METADATA_PATH
+    if not os.path.exists(meta_path) and os.path.exists(os.path.join(config.REPO_MODELS_DIR, 'training_metadata.json')):
+        meta_path = os.path.join(config.REPO_MODELS_DIR, 'training_metadata.json')
+
+    if os.path.exists(meta_path):
         try:
-            with open(METADATA_PATH, 'r') as f:
+            with open(meta_path, 'r') as f:
                 return json.load(f)
         except Exception:
             pass
@@ -401,11 +413,20 @@ def load_training_metadata():
 
 def load_classifier_and_encoder():
     """Loads trained SVM/MLP classifier and LabelEncoder if available."""
-    if os.path.exists(CLASSIFIER_PATH) and os.path.exists(LABEL_ENCODER_PATH):
+    clf_path = CLASSIFIER_PATH
+    lbl_path = LABEL_ENCODER_PATH
+
+    if not os.path.exists(clf_path) and os.path.exists(os.path.join(config.REPO_MODELS_DIR, 'face_classifier.pkl')):
+        clf_path = os.path.join(config.REPO_MODELS_DIR, 'face_classifier.pkl')
+
+    if not os.path.exists(lbl_path) and os.path.exists(os.path.join(config.REPO_MODELS_DIR, 'label_encoder.pkl')):
+        lbl_path = os.path.join(config.REPO_MODELS_DIR, 'label_encoder.pkl')
+
+    if os.path.exists(clf_path) and os.path.exists(lbl_path):
         try:
-            with open(CLASSIFIER_PATH, 'rb') as f:
+            with open(clf_path, 'rb') as f:
                 classifier = pickle.load(f)
-            with open(LABEL_ENCODER_PATH, 'rb') as f:
+            with open(lbl_path, 'rb') as f:
                 label_encoder = pickle.load(f)
             return classifier, label_encoder
         except Exception as e:
