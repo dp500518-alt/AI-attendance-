@@ -443,7 +443,7 @@ def get_student_photo(student_id):
     return Response(svg_avatar, mimetype='image/svg+xml')
 
 @app.route('/students/delete/<student_id>', methods=['POST'])
-@login_required
+@admin_required
 def delete_student_route(student_id):
     student = database.get_student(student_id)
     if student:

@@ -31,6 +31,12 @@ def register_new_student(student_id, roll_number, name, department, semester, sa
     student_dir = os.path.join(config.DATASET_DIR, student_id)
     os.makedirs(student_dir, exist_ok=True)
 
+    # Add student entry to Database first (satisfies FK constraints)
+    try:
+        database.add_student(student_id, roll_number, name, department, semester, division, email, phone)
+    except Exception as e:
+        return False, f"Database insertion failed: {e}"
+
     saved_count = 0
 
     # Save images to disk and DB if provided
@@ -46,17 +52,11 @@ def register_new_student(student_id, roll_number, name, department, semester, sa
             except Exception as e:
                 print(f"Error saving image sample {idx}: {e}")
         
-        # Persist photos inside SQLite database table for permanent container survival
+        # Persist photos inside SQLite database table for permanent storage
         try:
             database.save_student_photos(student_id, sample_images_b64)
         except Exception as e:
             print(f"Error saving photos to DB: {e}")
-
-    # Add student entry to Database
-    try:
-        database.add_student(student_id, roll_number, name, department, semester, division, email, phone)
-    except Exception as e:
-        return False, f"Database insertion failed: {e}"
 
     # Sync snapshot JSON seed for permanent repo/cloud persistence
     database.sync_backup_seed()
