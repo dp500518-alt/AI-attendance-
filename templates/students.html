@@ -1,40 +1,170 @@
 {% extends "base.html" %}
-{% block title %}Enrolled Students - Smart Attendance{% endblock %}
+{% block title %}Enrolled Students Directory - Smart Attendance{% endblock %}
 {% block page_title %}Enrolled Students Directory{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h5 class="fw-bold mb-0">Total Students: {{ students|length }}</h5>
-    <a href="{{ url_for('register_student') }}" class="btn btn-primary-custom">
-        <i class="bi bi-person-plus-fill"></i> Register New Student
+<!-- Top Header & Search Bar -->
+<div class="custom-card mb-4">
+    <div class="card-body-custom">
+        <form method="GET" action="{{ url_for('student_list') }}" class="row g-3 align-items-center">
+            <!-- Search Query -->
+            <div class="col-12 col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" value="{{ query or '' }}" class="form-control" placeholder="Search by Student Name, Roll No, or ID...">
+                </div>
+            </div>
+
+            <!-- Department Filter -->
+            <div class="col-6 col-md-3">
+                <select name="dept" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Departments</option>
+                    <option value="Computer Science" {% if dept_filter == 'Computer Science' %}selected{% endif %}>Computer Science</option>
+                    <option value="Information Tech" {% if dept_filter == 'Information Tech' %}selected{% endif %}>Information Tech</option>
+                    <option value="Electronics" {% if dept_filter == 'Electronics' %}selected{% endif %}>Electronics</option>
+                    <option value="Mechanical" {% if dept_filter == 'Mechanical' %}selected{% endif %}>Mechanical</option>
+                    <option value="Civil" {% if dept_filter == 'Civil' %}selected{% endif %}>Civil</option>
+                </select>
+            </div>
+
+            <!-- Semester Filter -->
+            <div class="col-6 col-md-2">
+                <select name="sem" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Semesters</option>
+                    {% for s in range(1, 9) %}
+                    <option value="Semester {{ s }}" {% if sem_filter == 'Semester ' ~ s %}selected{% endif %}>Sem {{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Submit & Reset -->
+            <div class="col-12 col-md-2 text-end">
+                <button type="submit" class="btn btn-primary-custom w-100 mb-1">
+                    <i class="bi bi-filter"></i> Filter
+                </button>
+                {% if query or sem_filter or dept_filter %}
+                <a href="{{ url_for('student_list') }}" class="small text-muted text-decoration-none">
+                    <i class="bi bi-x-circle me-1"></i> Clear Filters
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold mb-0 text-dark">
+        Showing {{ students|length }} of {{ total_count }} Student(s)
+    </h5>
+    <a href="{{ url_for('register_student') }}" class="btn btn-success">
+        <i class="bi bi-person-plus-fill me-1"></i> Register Student
     </a>
 </div>
 
+<!-- Student Cards Grid -->
 <div class="row g-3">
     {% if students %}
         {% for s in students %}
         <div class="col-12 col-sm-6 col-md-4 col-xl-3">
-            <div class="custom-card student-card h-100">
-                <div class="student-avatar bg-primary-subtle text-primary d-flex align-items-center justify-content-center fs-2 fw-bold mx-auto mb-3">
-                    {{ s.name[0] | upper }}
-                </div>
-                <h6 class="fw-bold mb-1">{{ s.name }}</h6>
-                <div class="text-muted small mb-2"><code>{{ s.id }}</code> | Roll: {{ s.roll_number }}</div>
-                <div class="mb-3">
-                    <span class="badge bg-primary-subtle text-primary">{{ s.department }}</span>
-                    <span class="badge bg-secondary-subtle text-body">Sem {{ s.semester }}</span>
-                </div>
-                <div class="text-muted text-truncate" style="font-size: 0.75rem;">
-                    Enrolled: {{ s.created_at }}
+            <div class="custom-card student-card h-100 text-center p-3">
+                <!-- Passport Photo Thumbnail -->
+                <div class="mb-3 position-relative d-inline-block">
+                    <img src="{{ url_for('get_student_photo', student_id=s.id) }}" 
+                         alt="{{ s.name }}" 
+                         class="rounded-circle object-fit-cover shadow-sm border border-3 border-light" 
+                         style="width: 90px; height: 90px;">
+                    {% if embeddings and s.id in embeddings %}
+                    <span class="position-absolute bottom-0 end-0 bg-success border border-light rounded-circle p-1" title="AI Face Embeddings Trained">
+                        <i class="bi bi-check-circle-fill text-white fs-6"></i>
+                    </span>
+                    {% endif %}
                 </div>
 
-                <div class="border-top border-secondary-subtle pt-3 mt-3 d-flex justify-content-center gap-2">
-                    <!-- Direct Form POST without native confirm popup blocking -->
-                    <form action="{{ url_for('delete_student_route', student_id=s.id) }}" method="POST">
-                        <button type="submit" class="btn btn-sm btn-outline-danger px-3">
-                            <i class="bi bi-trash-fill me-1"></i> Delete
+                <h6 class="fw-bold mb-1 text-dark text-truncate">{{ s.name }}</h6>
+                <div class="text-muted small mb-2">
+                    <code>{{ s.id }}</code> | Roll: <strong>{{ s.roll_number }}</strong>
+                </div>
+
+                <div class="mb-3 d-flex justify-content-center flex-wrap gap-1">
+                    <span class="badge bg-primary-subtle text-primary">{{ s.department }}</span>
+                    <span class="badge bg-secondary-subtle text-body">{{ s.semester }}</span>
+                    {% if s.division %}
+                    <span class="badge bg-info-subtle text-info">{{ s.division }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="text-muted small mb-3" style="font-size: 0.75rem;">
+                    <i class="bi bi-calendar3 me-1"></i> {{ s.created_at[:10] if s.created_at else 'Enrolled' }}
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="border-top pt-3 d-flex justify-content-center gap-2">
+                    <!-- Modal Details Button -->
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#studentModal{{ loop.index }}">
+                        <i class="bi bi-eye-fill me-1"></i> Watch Details
+                    </button>
+
+                    <!-- Delete Form -->
+                    <form action="{{ url_for('delete_student_route', student_id=s.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete student {{ s.name }} ({{ s.id }})? This action cannot be undone.');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash-fill"></i>
                         </button>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Detail Modal -->
+        <div class="modal fade" id="studentModal{{ loop.index }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-person-badge-fill me-2"></i> {{ s.name }}</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body text-center p-4">
+                        <img src="{{ url_for('get_student_photo', student_id=s.id) }}" 
+                             alt="{{ s.name }}" 
+                             class="rounded-3 object-fit-cover shadow border mb-3" 
+                             style="width: 140px; height: 160px;">
+                        
+                        <h5 class="fw-bold mb-1">{{ s.name }}</h5>
+                        <div class="text-muted mb-3">Student ID: <code>{{ s.id }}</code></div>
+
+                        <ul class="list-group list-group-flush text-start rounded-3 border mb-3">
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span class="text-muted">Roll Number</span>
+                                <span class="fw-bold">{{ s.roll_number }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span class="text-muted">Department</span>
+                                <span class="fw-bold">{{ s.department }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span class="text-muted">Semester & Division</span>
+                                <span class="fw-bold">{{ s.semester }} ({{ s.division or 'Division A' }})</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span class="text-muted">Email Address</span>
+                                <span>{{ s.email or 'N/A' }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span class="text-muted">Phone Number</span>
+                                <span>{{ s.phone or 'N/A' }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span class="text-muted">AI Embeddings Status</span>
+                                {% if embeddings and s.id in embeddings %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Active in Model</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">Pending Training</span>
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -44,9 +174,9 @@
             <div class="custom-card text-center py-5">
                 <i class="bi bi-people fs-1 text-muted d-block mb-2"></i>
                 <h5>No Enrolled Students Found</h5>
-                <p class="text-muted mb-3">Click below to add students to the AI database.</p>
+                <p class="text-muted mb-3">No matching student records found in the AI database.</p>
                 <a href="{{ url_for('register_student') }}" class="btn btn-primary-custom">
-                    <i class="bi bi-person-plus-fill me-1"></i> Register First Student
+                    <i class="bi bi-person-plus-fill me-1"></i> Register Student Now
                 </a>
             </div>
         </div>

@@ -382,8 +382,65 @@ def export_csv_route():
 @app.route('/students')
 @login_required
 def student_list():
-    students = database.get_all_students()
-    return render_template('students.html', active_page='students', students=students)
+    query = request.args.get('q', '').strip()
+    sem_filter = request.args.get('sem', '').strip()
+    dept_filter = request.args.get('dept', '').strip()
+
+    all_students = database.get_all_students()
+    filtered = []
+
+    for s in all_students:
+        if query:
+            q_lower = query.lower()
+            if not (q_lower in s.get('name', '').lower() or q_lower in s.get('id', '').lower() or q_lower in s.get('roll_number', '').lower()):
+                continue
+        if sem_filter and s.get('semester') != sem_filter:
+            continue
+        if dept_filter and s.get('department') != dept_filter:
+            continue
+        filtered.append(s)
+
+    embeddings = database.get_all_embeddings()
+
+    return render_template('students.html',
+                           active_page='students',
+                           students=filtered,
+                           total_count=len(all_students),
+                           query=query,
+                           sem_filter=sem_filter,
+                           dept_filter=dept_filter,
+                           embeddings=embeddings)
+
+@app.route('/students/photo/<student_id>')
+@login_required
+def get_student_photo(student_id):
+    student_id = str(student_id).strip()
+    
+    # 1. Check disk dataset folder
+    student_dir = os.path.join(config.DATASET_DIR, student_id)
+    if os.path.exists(student_dir):
+        files = [f for f in os.listdir(student_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        if files:
+            return send_file(os.path.join(student_dir, files[0]), mimetype='image/jpeg')
+
+    # 2. Check SQLite DB StudentPhotos table
+    db_photos = database.get_student_photos(student_id)
+    if db_photos and len(db_photos) > 0:
+        try:
+            img = decode_base64_image(db_photos[0])
+            if img is not None and img.size > 0:
+                import cv2
+                _, buf = cv2.imencode('.jpg', img)
+                return Response(buf.tobytes(), mimetype='image/jpeg')
+        except Exception:
+            pass
+
+    # 3. Fallback placeholder SVG avatar
+    svg_avatar = f'''<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+      <rect width="100%" height="100%" fill="#4f46e5"/>
+      <text x="50%" y="55%" font-size="44" font-weight="bold" fill="#ffffff" dominant-baseline="middle" text-anchor="middle">{student_id[:2].upper()}</text>
+    </svg>'''
+    return Response(svg_avatar, mimetype='image/svg+xml')
 
 @app.route('/students/delete/<student_id>', methods=['POST'])
 @login_required
