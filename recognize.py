@@ -1,4 +1,5 @@
 import os
+import time
 import urllib.request
 import cv2
 import numpy as np
@@ -183,41 +184,75 @@ class FaceEngine:
 
     def recognize_faces(self, img_bgr, known_embeddings, threshold=None):
         """
-        Detects faces in img_bgr and matches each face against known_embeddings dict:
-        known_embeddings = {'S101': np.array(...), 'S102': np.array(...)}
+        Detects faces in img_bgr and predicts Student ID using trained SVM/MLP classifier.
+        Falls back to cosine similarity if classifier is unavailable.
 
-        Returns:
-        list of dicts:
+        Returns list of dicts:
         [{
             'bbox': (x, y, w, h),
             'student_id': 'S101' or 'Unknown',
-            'similarity': float,
+            'similarity': float,  # Confidence score (0.0 to 1.0)
+            'confidence': float,  # Percentage 0-100%
+            'recognition_time_ms': float,
             'matched': bool
         }]
         """
+        t_start = time.time()
         if threshold is None:
             threshold = config.RECOGNITION_THRESHOLD
 
         detected_faces = self.detect_and_extract(img_bgr)
         matches = []
 
+        # Try loading trained classifier & label encoder
+        classifier = None
+        label_encoder = None
+        try:
+            from model_trainer import load_classifier_and_encoder
+            classifier, label_encoder = load_classifier_and_encoder()
+        except Exception as e_load:
+            classifier, label_encoder = None, None
+
         for face in detected_faces:
             emb = face['embedding']
             best_id = "Unknown"
             best_score = 0.0
 
-            for student_id, known_emb in known_embeddings.items():
-                sim = self.cosine_similarity(emb, known_emb)
-                if sim > best_score:
-                    best_score = sim
-                    best_id = student_id
+            # 1. Use Trained Classifier (SVM / MLP) if available
+            if classifier is not None and label_encoder is not None:
+                try:
+                    probs = classifier.predict_proba([emb])[0]
+                    best_idx = np.argmax(probs)
+                    score = float(probs[best_idx])
+
+                    if score >= threshold:
+                        predicted_id = label_encoder.inverse_transform([best_idx])[0]
+                        best_id = str(predicted_id)
+                        best_score = score
+                    else:
+                        best_id = "Unknown"
+                        best_score = score
+                except Exception as e_clf:
+                    print(f"Classifier prediction error, falling back to Cosine Similarity: {e_clf}")
+                    classifier = None
+
+            # 2. Fallback to Cosine Similarity matching against DB embeddings
+            if classifier is None:
+                for student_id, known_emb in known_embeddings.items():
+                    sim = self.cosine_similarity(emb, known_emb)
+                    if sim > best_score:
+                        best_score = sim
+                        best_id = student_id
 
             is_matched = (best_score >= threshold) and (best_id != "Unknown")
+            rec_time_ms = round((time.time() - t_start) * 1000, 2)
 
             matches.append({
                 'bbox': face['bbox'],
                 'student_id': best_id if is_matched else "Unknown",
                 'similarity': round(best_score, 4),
+                'confidence': round(best_score * 100, 1),
+                'recognition_time_ms': rec_time_ms,
                 'matched': is_matched
             })
 

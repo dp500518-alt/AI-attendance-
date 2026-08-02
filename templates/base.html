@@ -73,6 +73,11 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="{{ url_for('training_dashboard') }}" class="nav-link {% if active_page == 'training' %}active{% endif %}">
+                    <i class="bi bi-cpu-fill text-danger"></i> AI Model Training
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="{{ url_for('student_list') }}" class="nav-link {% if active_page == 'students' %}active{% endif %}">
                     <i class="bi bi-people-fill"></i> Enrolled Students
                 </a>

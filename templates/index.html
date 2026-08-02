@@ -121,8 +121,21 @@
                         <span class="fw-semibold text-success">{{ threshold }}</span>
                     </li>
                     <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
-                        <span class="text-muted">AI Detection:</span>
-                        <span class="badge bg-success rounded-pill">OpenCV YuNet / SFace</span>
+                        <span class="text-muted">AI Face Classifier:</span>
+                        {% if training_meta and training_meta.training_date != 'Not Trained' %}
+                        <span class="badge bg-success rounded-pill">{{ training_meta.accuracy }}% Acc ({{ training_meta.model_type }})</span>
+                        {% else %}
+                        <span class="badge bg-warning rounded-pill">Not Trained</span>
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
+                        <span class="text-muted">Augmented Dataset:</span>
+                        <span class="fw-semibold text-primary">{{ training_meta.total_augmented_images if training_meta else 0 }} photos</span>
+                    </li>
+                    <li class="list-group-item bg-transparent d-flex justify-content-between px-0 pt-3">
+                        <a href="{{ url_for('training_dashboard') }}" class="btn btn-sm btn-outline-primary w-100">
+                            <i class="bi bi-cpu-fill me-1"></i> Open Training Dashboard
+                        </a>
                     </li>
                 </ul>
             </div>

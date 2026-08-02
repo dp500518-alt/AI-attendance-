@@ -73,8 +73,10 @@ def generate_embedding_for_student(student_id):
 
 def train_all_students():
     """
-    Re-generates embeddings for all student folders in dataset/ directory.
+    Re-generates embeddings for all students and triggers full background classifier training.
     """
+    from model_trainer import trainer
+    database.init_db()
     students = database.get_all_students()
     results = {}
 
@@ -83,10 +85,14 @@ def train_all_students():
         success, msg = generate_embedding_for_student(sid)
         results[sid] = {'success': success, 'message': msg}
 
+    # Trigger background model training pipeline
+    started, train_msg = trainer.start_training_async()
+    print(f"Background Classifier Training: {train_msg}")
+
     return results
 
 if __name__ == '__main__':
     database.init_db()
-    print("Training embeddings for all registered students...")
+    print("Training embeddings and classifier model for all registered students...")
     res = train_all_students()
-    print("Training finished:", res)
+    print("Embedding generation finished:", res)

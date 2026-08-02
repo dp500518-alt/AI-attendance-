@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% block title %}AI Model Training Dashboard - Smart Attendance{% endblock %}
+{% block page_title %}AI Model Training Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- Top Status Banner -->
+    <div class="custom-card mb-4 border-start border-4 border-primary">
+        <div class="card-body-custom d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h5 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-cpu-fill text-primary fs-4"></i> AI Face Classifier Status
+                    {% if meta.training_date != 'Not Trained' %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">
+                        <i class="bi bi-check-circle-fill me-1"></i> {{ meta.model_type }} Active
+                    </span>
+                    {% else %}
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-1 rounded-pill">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i> Model Not Trained
+                    </span>
+                    {% endif %}
+                </h5>
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-clock-history me-1"></i> Last Trained: 
+                    <strong id="lastTrainDate">{{ meta.training_date }}</strong> 
+                    {% if meta.training_time_seconds %}
+                    | Duration: <strong>{{ meta.training_time_seconds }}s</strong>
+                    {% endif %}
+                </p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" id="startTrainBtn" class="btn btn-primary-custom" onclick="triggerTraining()">
+                    <i class="bi bi-play-fill me-1"></i> Retrain Model
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="fetchLogsModal()">
+                    <i class="bi bi-terminal-fill me-1"></i> View Logs
+                </button>
+                <a href="{{ url_for('download_model') }}" class="btn btn-outline-success">
+                    <i class="bi bi-download me-1"></i> Download Model
+                </a>
+                <button type="button" class="btn btn-outline-danger" onclick="confirmDeleteModel()">
+                    <i class="bi bi-trash-fill me-1"></i> Delete Model
+                </button>
+            </div>
+        </div>
+
+        <!-- Dynamic Training Progress Bar -->
+        <div id="progressContainer" class="px-4 pb-3" style="display: none;">
+            <div class="d-flex justify-content-between small fw-semibold text-primary mb-1">
+                <span id="trainStatusMsg">Training in progress...</span>
+                <span id="trainPct">0%</span>
+            </div>
+            <div class="progress" style="height: 12px;">
+                <div id="trainProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Statistics Grid -->
+    <div class="row g-3 mb-4">
+        <!-- Total Registered Students -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="custom-card p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">Total Students</div>
+                        <h3 class="fw-bold mb-0 text-dark" id="statStudents">{{ meta.total_students }}</h3>
+                    </div>
+                    <div class="rounded-3 p-3 bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-people-fill fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Original & Augmented Images -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="custom-card p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">Images (Original / Aug)</div>
+                        <h3 class="fw-bold mb-0 text-dark">
+                            <span id="statOrig">{{ meta.total_original_images }}</span> / 
+                            <span id="statAug" class="text-primary">{{ meta.total_augmented_images }}</span>
+                        </h3>
+                    </div>
+                    <div class="rounded-3 p-3 bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-images fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Model Training Accuracy -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="custom-card p-3 h-100 border-start border-3 border-success">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">Training Accuracy</div>
+                        <h3 class="fw-bold mb-0 text-success" id="statAcc">{{ meta.accuracy }}%</h3>
+                    </div>
+                    <div class="rounded-3 p-3 bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-patch-check-fill fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- F1 Score -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="custom-card p-3 h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">Weighted F1 Score</div>
+                        <h3 class="fw-bold mb-0 text-dark" id="statF1">{{ meta.f1_score }}%</h3>
+                    </div>
+                    <div class="rounded-3 p-3 bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-graph-up-arrow fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Evaluation Metrics & Pipeline Card -->
+    <div class="row g-4 mb-4">
+        <!-- Classification Metrics -->
+        <div class="col-12 col-lg-5">
+            <div class="custom-card h-100">
+                <div class="card-header-custom">
+                    <h6 class="card-title-custom">
+                        <i class="bi bi-bar-chart-fill text-primary"></i> Detailed Model Metrics
+                    </h6>
+                </div>
+                <div class="card-body-custom">
+                    <ul class="list-group list-group-flush rounded-3">
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span class="text-muted">Model Backbone & Classifier</span>
+                            <span class="fw-bold text-dark">InsightFace/SFace + {{ meta.model_type }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span class="text-muted">Embedding Vector Dimension</span>
+                            <span class="badge bg-secondary">128-D / 512-D</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span class="text-muted">Data Augmentation Factor</span>
+                            <span class="fw-bold text-primary">20x per Passport Photo</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span class="text-muted">Precision Score</span>
+                            <span class="fw-bold text-dark" id="statPrec">{{ meta.precision }}%</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span class="text-muted">Recall Score</span>
+                            <span class="fw-bold text-dark" id="statRec">{{ meta.recall }}%</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span class="text-muted">Cross-Validation Split</span>
+                            <span class="fw-bold text-dark">75% Train / 25% Stratified Test</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confusion Matrix Visualization Table -->
+        <div class="col-12 col-lg-7">
+            <div class="custom-card h-100">
+                <div class="card-header-custom d-flex justify-content-between align-items-center">
+                    <h6 class="card-title-custom mb-0">
+                        <i class="bi bi-grid-3x3-gap-fill text-success"></i> Confusion Matrix Visualization
+                    </h6>
+                    <small class="text-muted">Actual (Rows) vs Predicted (Cols)</small>
+                </div>
+                <div class="card-body-custom overflow-auto">
+                    {% if meta.confusion_matrix and meta.confusion_matrix.labels %}
+                    <table class="table table-bordered text-center align-middle small mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Actual \ Pred</th>
+                                {% for lbl in meta.confusion_matrix.labels %}
+                                <th>{{ lbl }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in meta.confusion_matrix.matrix %}
+                            {% set row_idx = loop.index0 %}
+                            <tr>
+                                <th class="table-light">{{ meta.confusion_matrix.labels[row_idx] }}</th>
+                                {% for val in row %}
+                                <td class="{% if loop.index0 == row_idx and val > 0 %}table-success fw-bold{% elif val > 0 %}table-danger{% endif %}">
+                                    {{ val }}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-info-circle fs-3 d-block mb-2 text-secondary"></i>
+                        No confusion matrix data available yet. Click <strong>Retrain Model</strong> to train the classifier.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Training Logs Console -->
+    <div class="custom-card">
+        <div class="card-header-custom d-flex justify-content-between align-items-center">
+            <h6 class="card-title-custom mb-0">
+                <i class="bi bi-terminal-fill text-dark"></i> Training Logs Console
+            </h6>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadLogs()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh Logs
+            </button>
+        </div>
+        <div class="card-body-custom bg-dark text-light p-3 rounded-bottom font-monospace small" style="max-height: 220px; overflow-y: auto;" id="logsConsole">
+            <div class="text-muted">Log output will appear here when model training runs...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Logs Modal -->
+<div class="modal fade" id="logsModal" tabindex="-1" aria-labelledby="logsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="logsModalLabel"><i class="bi bi-terminal-fill me-2"></i> Full Training Logs</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-dark text-success font-monospace small" id="fullLogsBody" style="min-height: 300px;">
+                Loading logs...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let statusPollInterval = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        checkStatus();
+        loadLogs();
+        statusPollInterval = setInterval(checkStatus, 3000);
+    });
+
+    async function checkStatus() {
+        try {
+            const res = await fetch("{{ url_for('api_training_status') }}");
+            const data = await res.json();
+
+            const pContainer = document.getElementById('progressContainer');
+            const pBar = document.getElementById('trainProgressBar');
+            const pPct = document.getElementById('trainPct');
+            const pMsg = document.getElementById('trainStatusMsg');
+            const trainBtn = document.getElementById('startTrainBtn');
+
+            if (data.is_training) {
+                pContainer.style.display = 'block';
+                pBar.style.width = data.progress + '%';
+                pPct.innerText = data.progress + '%';
+                pMsg.innerText = data.status_message;
+                if (trainBtn) trainBtn.disabled = true;
+                loadLogs();
+            } else {
+                pContainer.style.display = 'none';
+                if (trainBtn) trainBtn.disabled = false;
+            }
+
+            if (data.metadata && data.metadata.training_date !== 'Not Trained') {
+                document.getElementById('lastTrainDate').innerText = data.metadata.training_date;
+                document.getElementById('statStudents').innerText = data.metadata.total_students;
+                document.getElementById('statOrig').innerText = data.metadata.total_original_images;
+                document.getElementById('statAug').innerText = data.metadata.total_augmented_images;
+                document.getElementById('statAcc').innerText = data.metadata.accuracy + '%';
+                document.getElementById('statF1').innerText = data.metadata.f1_score + '%';
+                document.getElementById('statPrec').innerText = data.metadata.precision + '%';
+                document.getElementById('statRec').innerText = data.metadata.recall + '%';
+            }
+        } catch (err) {
+            console.error("Error checking training status:", err);
+        }
+    }
+
+    async function triggerTraining() {
+        if (!confirm("Are you sure you want to train/retrain the AI face classifier? This will process registered passport photos and generate augmented embeddings in the background.")) {
+            return;
+        }
+
+        try {
+            const res = await fetch("{{ url_for('api_trigger_training') }}", { method: 'POST' });
+            const data = await res.json();
+            alert(data.message);
+            checkStatus();
+        } catch (err) {
+            alert("Failed to trigger training: " + err);
+        }
+    }
+
+    async function loadLogs() {
+        try {
+            const res = await fetch("{{ url_for('api_training_logs') }}");
+            const data = await res.json();
+            const consoleElem = document.getElementById('logsConsole');
+            if (data.logs && data.logs.length > 0) {
+                consoleElem.innerHTML = data.logs.map(l => `<div>${l}</div>`).join('');
+                consoleElem.scrollTop = consoleElem.scrollHeight;
+            }
+        } catch (err) {
+            console.error("Error loading logs:", err);
+        }
+    }
+
+    async function fetchLogsModal() {
+        const modal = new bootstrap.Modal(document.getElementById('logsModal'));
+        modal.show();
+        try {
+            const res = await fetch("{{ url_for('api_training_logs') }}");
+            const data = await res.json();
+            const body = document.getElementById('fullLogsBody');
+            if (data.logs && data.logs.length > 0) {
+                body.innerHTML = data.logs.map(l => `<div>${l}</div>`).join('');
+            } else {
+                body.innerHTML = '<div class="text-muted">No training logs recorded yet.</div>';
+            }
+        } catch (err) {
+            document.getElementById('fullLogsBody').innerText = "Error loading logs: " + err;
+        }
+    }
+
+    async function confirmDeleteModel() {
+        if (!confirm("⚠️ Warning: Deleting the trained model will remove the classifier artifacts (face_classifier.pkl, metadata, etc.). Are you sure?")) {
+            return;
+        }
+
+        try {
+            const res = await fetch("{{ url_for('api_delete_model') }}", { method: 'POST' });
+            const data = await res.json();
+            alert(data.message);
+            window.location.reload();
+        } catch (err) {
+            alert("Error deleting model: " + err);
+        }
+    }
+</script>
+{% endblock %}

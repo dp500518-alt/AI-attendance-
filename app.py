@@ -12,6 +12,7 @@ import ocr_timetable
 import login_security
 import analytics_reports
 import notifications
+import model_trainer
 from camera import camera_instance, decode_base64_image
 from train import train_all_students
 
@@ -34,14 +35,15 @@ def inject_global_data():
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
-    flash("Uploaded file or photo data was too large. Please select a smaller photo or retry.", "error")
+    flash("The uploaded file or photo batch exceeds maximum limit (100MB). Please select smaller photo files.", "error")
     return redirect(request.referrer or url_for('dashboard'))
 
+# Authentication Helper Decorators
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
-            flash("Please login to access the system.", "warning")
+            flash("Please log in to access this page.", "warning")
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
@@ -49,10 +51,7 @@ def login_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user' not in session:
-            flash("Please login to access the system.", "warning")
-            return redirect(url_for('login'))
-        if session.get('user_role') != 'admin':
+        if 'user' not in session or session.get('user_role') != 'admin':
             flash("Admin privilege required for this action.", "error")
             return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
@@ -111,7 +110,7 @@ def login():
                     session_id='',
                     status='Failed'
                 )
-            flash("Invalid username or password.", "error")
+            flash("Invalid username or password. Please try again.", "error")
 
     return render_template('login.html')
 
@@ -814,6 +813,47 @@ def import_database():
         flash(f"Import failed: {e}", "error")
 
     return redirect(url_for('system_settings'))
+
+# -------------------------------------------------------------
+# AI Face Classifier Training Pipeline Routes & Endpoints
+# -------------------------------------------------------------
+@app.route('/training')
+@login_required
+def training_dashboard():
+    meta = model_trainer.load_training_metadata()
+    return render_template('training.html', active_page='training', meta=meta)
+
+@app.route('/api/training/train', methods=['POST'])
+@login_required
+def api_trigger_training():
+    started, msg = model_trainer.trainer.start_training_async()
+    return jsonify({'success': started, 'message': msg})
+
+@app.route('/api/training/status')
+@login_required
+def api_training_status():
+    status = model_trainer.trainer.get_status()
+    return jsonify(status)
+
+@app.route('/api/training/logs')
+@login_required
+def api_training_logs():
+    logs = model_trainer.trainer.get_logs()
+    return jsonify({'logs': logs})
+
+@app.route('/api/training/download')
+@login_required
+def download_model():
+    if os.path.exists(model_trainer.CLASSIFIER_PATH):
+        return send_file(model_trainer.CLASSIFIER_PATH, as_attachment=True, download_name='face_classifier.pkl')
+    flash("No trained face classifier model file found.", "error")
+    return redirect(url_for('training_dashboard'))
+
+@app.route('/api/training/delete', methods=['POST'])
+@login_required
+def api_delete_model():
+    success = model_trainer.delete_model_artifacts()
+    return jsonify({'success': success, 'message': 'Trained model artifacts reset successfully.'})
 
 if __name__ == '__main__':
     print("Starting AI Smart Attendance System on http://127.0.0.1:5000 ...")

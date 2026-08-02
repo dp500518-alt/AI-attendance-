@@ -67,4 +67,12 @@ def register_new_student(student_id, roll_number, name, department, semester, sa
         success, msg = generate_embedding_for_student(student_id)
         embedding_msg = f" Embeddings: {msg}" if success else f" Warning: {msg}"
 
+        # Trigger automatic background classifier model retraining
+        try:
+            from model_trainer import trainer
+            trainer.start_training_async()
+            embedding_msg += " (Automatic AI Model Retraining initiated in background)"
+        except Exception as e_tr:
+            print(f"Error launching background trainer: {e_tr}")
+
     return True, f"Student '{name}' registered successfully with {saved_count} photos.{embedding_msg}"
