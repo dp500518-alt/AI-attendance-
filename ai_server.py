@@ -26,13 +26,6 @@ logging.basicConfig(
     ]
 )
 
-from storage_manager import storage_manager
-
-try:
-    storage_manager.reconnect_and_sync()
-except Exception as e:
-    logging.error(f"Persistent storage reconnect error on AI server startup: {e}")
-
 SERVER_START_TIME = time.time()
 
 
@@ -47,8 +40,7 @@ def health():
         'port': 5001,
         'uptime_seconds': uptime,
         'permanent_storage': config.DATA_DIR,
-        'is_container_env': config.IS_CONTAINER_ENV,
-        'object_storage_connected': storage_manager.is_object_storage_connected(),
+        'storage_mode': '100% Local PC Storage',
         'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
 
@@ -67,8 +59,7 @@ def status():
         'total_registered_students': len(students),
         'total_embeddings_in_db': len(all_embs),
         'permanent_data_dir': config.DATA_DIR,
-        'is_container_env': config.IS_CONTAINER_ENV,
-        'object_storage_connected': storage_manager.is_object_storage_connected(),
+        'storage_mode': '100% Local PC Storage',
         'training': trainer_status,
         'model_metadata': meta,
         'uptime_seconds': round(time.time() - SERVER_START_TIME, 2)

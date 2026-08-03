@@ -26,12 +26,7 @@ app.secret_key = config.SECRET_KEY
 # Set Max Payload Limit to 100 MB
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 
-# Reconnect to persistent database and object storage on app startup
-from storage_manager import storage_manager
-try:
-    storage_manager.reconnect_and_sync()
-except Exception as e:
-    print(f"Notice: Persistent storage reconnect error on app startup: {e}")
+# Initialize 100% Local PC Database & Storage Directories on Startup
 database.init_db()
 
 @app.context_processor

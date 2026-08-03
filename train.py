@@ -61,17 +61,10 @@ def generate_embedding_for_student(student_id):
     if norm > 0:
         mean_embedding = mean_embedding / norm
 
-    # Save to SQLite database
+    # Save to SQLite database and D:\SmartAttendanceServer\embeddings\<student_id>.npy
     database.save_embedding(str(student_id), mean_embedding)
-
-    # Save backup serialization file in embeddings/ and persistent storage
     backup_file = os.path.join(config.EMBEDDINGS_DIR, f"{student_id}.npy")
     np.save(backup_file, mean_embedding)
-    try:
-        from storage_manager import storage_manager
-        storage_manager.upload_file(backup_file, f"embeddings/{student_id}.npy")
-    except Exception as e:
-        print(f"Notice: Could not persist embedding for {student_id} to object storage: {e}")
 
     print(f"Successfully generated embedding for {student_id} from {processed_count} images.")
     return True, f"Generated embedding from {processed_count} photos."
