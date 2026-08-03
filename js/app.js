@@ -312,50 +312,47 @@ function captureClassroomPhoto(videoElemId) {
     return canvas.toDataURL('image/jpeg', 0.75);
 }
 
-// 5. Client-Side Image Compressor for Classroom Photo Form Upload
+// 5. Client-Side Image Compressor for Classroom Photo Form Upload (Multi-Photo Support)
 async function compressAndSubmitClassroomForm(event, formElem) {
     const fileInput = formElem.querySelector('input[type="file"][name="classroom_photo"]');
     if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
         return true;
     }
 
-    const file = fileInput.files[0];
-    // If file is already small (< 800KB), submit directly
-    if (file.size < 800 * 1024) {
+    const files = Array.from(fileInput.files);
+    // If all files are small (< 800KB), submit directly
+    if (files.every(f => f.size < 800 * 1024)) {
         return true;
     }
 
     event.preventDefault(); // Intercept raw large upload
 
     const submitBtn = formElem.querySelector('button[type="submit"]');
-    const originalText = submitBtn ? submitBtn.innerHTML : '';
     if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Compressing & Uploading...';
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Compressing & Uploading Photos...';
     }
 
     try {
-        const b64Data = await compressImageFileToBase64(file, 1280, 960, 0.75);
-        
-        // Convert base64 to Blob
-        const res = await fetch(b64Data);
-        const blob = await res.blob();
-        const compressedFile = new File([blob], file.name || "classroom.jpg", { type: "image/jpeg" });
-
-        // Replace file input files via DataTransfer API
         const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(compressedFile);
-        fileInput.files = dataTransfer.files;
 
-        // Submit form
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (file.size >= 800 * 1024) {
+                const b64Data = await compressImageFileToBase64(file, 1280, 960, 0.75);
+                const res = await fetch(b64Data);
+                const blob = await res.blob();
+                const compressedFile = new File([blob], file.name || `classroom_${i+1}.jpg`, { type: "image/jpeg" });
+                dataTransfer.items.add(compressedFile);
+            } else {
+                dataTransfer.items.add(file);
+            }
+        }
+
+        fileInput.files = dataTransfer.files;
         formElem.submit();
     } catch (err) {
-        console.error("Compression failed, proceeding with standard submit:", err);
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        }
+        console.error("Image compression error:", err);
         formElem.submit();
     }
-    return false;
 }

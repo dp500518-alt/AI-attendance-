@@ -306,39 +306,51 @@ def classroom_attendance():
 @app.route('/classroom/upload', methods=['POST'], endpoint='classroom_upload')
 @login_required
 def classroom_upload():
-    if 'classroom_photo' not in request.files:
+    uploaded_files = request.files.getlist('classroom_photo')
+    if not uploaded_files or not any(f and f.filename != '' for f in uploaded_files):
         flash("No classroom photo uploaded.", "error")
         return redirect(url_for('classroom_attendance'))
 
-    file = request.files['classroom_photo']
     import numpy as np
     import cv2
-    file_bytes = np.frombuffer(file.read(), np.uint8)
-    img_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
-    if img_bgr is None:
-        flash("Invalid image format.", "error")
+    img_bgr_list = []
+    for file in uploaded_files:
+        if file and file.filename != '':
+            file_bytes = np.frombuffer(file.read(), np.uint8)
+            img_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+            if img_bgr is not None and img_bgr.size > 0:
+                img_bgr_list.append(img_bgr)
+
+    if not img_bgr_list:
+        flash("Invalid image format received.", "error")
         return redirect(url_for('classroom_attendance'))
 
     database.init_db()
-    known_embs = database.get_all_embeddings()
-    results = recognize.face_engine.recognize_faces(img_bgr, known_embs)
+    slot_id = request.form.get('slot_id', None)
+    teacher_username = session.get('user')
 
-    subject_name = request.form.get('subject_name', 'General Lecture')
-    teacher_name = request.form.get('teacher_name', session.get('user_fullname', 'Teacher'))
+    success, msg, summary = attendance.process_multiple_classroom_images(
+        img_bgr_list=img_bgr_list,
+        teacher_username=teacher_username,
+        slot_id=slot_id
+    )
 
-    marked_count = 0
-    for f in results:
-        if f.get('student_id') and f.get('student_id') != 'Unknown':
-            attendance.mark_attendance(
-                student_id=f['student_id'],
-                subject_name=subject_name,
-                teacher_name=teacher_name,
-                confidence=f.get('confidence', 0.0)
-            )
-            marked_count += 1
+    if success and summary:
+        detected = summary.get('total_detected', 0)
+        newly_marked = len(summary.get('newly_marked_present', []))
+        already_marked = len(summary.get('already_marked_present', []))
+        total_present = newly_marked + already_marked
+        photos_count = summary.get('photos_processed_count', len(img_bgr_list))
 
-    flash(f"Classroom attendance processed! Detected {len(results)} faces, marked {marked_count} present.", "success")
+        flash(
+            f"Classroom attendance processed across {photos_count} photo(s)! "
+            f"Detected {detected} total face(s), marked {total_present} student(s) present.",
+            "success"
+        )
+    else:
+        flash(msg or "Failed to process classroom photos.", "error")
+
     return redirect(url_for('classroom_attendance'))
 
 @app.route('/classroom/snap', methods=['POST'], endpoint='classroom_snap')

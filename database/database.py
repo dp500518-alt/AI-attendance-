@@ -661,10 +661,22 @@ def mark_attendance(student_id, status='Present', date_str=None, time_str=None, 
     conn = get_connection()
     cursor = conn.cursor()
     try:
+        if timetable_id is not None:
+            cursor.execute(
+                "SELECT id FROM Attendance WHERE student_id=? AND date=? AND timetable_id=?",
+                (student_id, date_str, timetable_id)
+            )
+        else:
+            cursor.execute(
+                "SELECT id FROM Attendance WHERE student_id=? AND date=? AND subject_name=?",
+                (student_id, date_str, subject_name or 'General Attendance Session')
+            )
+        if cursor.fetchone():
+            return False
+
         cursor.execute("""
         INSERT INTO Attendance (student_id, date, time, status, timetable_id, subject_name, semester, division)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(student_id, date, timetable_id) DO NOTHING
         """, (student_id, date_str, time_str, status, timetable_id, subject_name, semester, division))
         conn.commit()
         inserted = cursor.rowcount > 0
