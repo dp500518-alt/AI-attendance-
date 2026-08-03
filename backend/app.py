@@ -354,7 +354,12 @@ def classroom_snap():
         flash("No webcam image captured.", "error")
         return redirect(url_for('classroom_attendance'))
 
-    img_bgr = camera.decode_base64_image(b64_str)
+    if decode_base64_image is not None:
+        img_bgr = decode_base64_image(b64_str)
+    else:
+        from camera import decode_base64_image as _decode
+        img_bgr = _decode(b64_str)
+
     if img_bgr is None:
         flash("Invalid image data received.", "error")
         return redirect(url_for('classroom_attendance'))

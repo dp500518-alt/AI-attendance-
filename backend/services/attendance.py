@@ -187,3 +187,27 @@ def check_and_notify_student_attendance(student_id, student_name):
         msg = f"Warning: Your attendance has fallen to {pct}%. Please attend upcoming lectures."
         database.create_notification(target_user=student_id, title=title, message=msg, channel="website")
 
+
+def mark_attendance(student_id, status='Present', subject_name='General Lecture', teacher_name=None, confidence=0.0):
+    """
+    Marks attendance for a single student in SQLite DB and triggers short attendance warnings if applicable.
+    """
+    student = database.get_student(student_id)
+    sem = student.get('semester') if student else None
+    div = student.get('division') if student else None
+
+    inserted = database.mark_attendance(
+        student_id=student_id,
+        status=status,
+        subject_name=subject_name,
+        semester=sem,
+        division=div
+    )
+    if student and inserted:
+        try:
+            check_and_notify_student_attendance(student_id, student.get('name', 'Student'))
+        except Exception:
+            pass
+    return inserted
+
+
