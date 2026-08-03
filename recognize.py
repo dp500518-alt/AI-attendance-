@@ -22,7 +22,60 @@ class FaceEngine:
             except Exception as e:
                 print(f"Failed to download model from {url}: {e}")
 
+    def _init_yolo_model(self):
+        """
+        Loads YOLO object detector model locally when engine initializes.
+        Keeps model loaded in RAM permanently for multi-student detection.
+        Never reloads YOLO model for every image.
+        Supports Ultralytics PyTorch YOLO and OpenCV DNN YOLO ONNX.
+        """
+        if self.yolo_model is not None or getattr(self, 'yolo_dnn_net', None) is not None:
+            return
+
+        model_path = config.YOLO_MODEL_PATH
+
+        # 1. Try Ultralytics PyTorch YOLO
+        try:
+            from ultralytics import YOLO
+            if not os.path.exists(model_path):
+                print(f"Initializing local YOLO model at {model_path}...")
+                model = YOLO('yolov8n.pt')
+                try:
+                    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+                    model.save(model_path)
+                except Exception:
+                    pass
+                self.yolo_model = model
+            else:
+                print(f"Loading local YOLO model from {model_path} into RAM...")
+                self.yolo_model = YOLO(model_path)
+
+            print("Local Ultralytics YOLO Person Detector loaded successfully in RAM.")
+            return
+        except Exception as e:
+            print(f"Ultralytics YOLO note: {e}")
+
+        # 2. Try OpenCV DNN YOLO ONNX fallback
+        try:
+            onnx_path = os.path.join(config.MODELS_DIR, 'yolov8n.onnx')
+            if not os.path.exists(onnx_path) and os.path.exists(os.path.join(config.REPO_MODELS_DIR, 'yolov8n.onnx')):
+                onnx_path = os.path.join(config.REPO_MODELS_DIR, 'yolov8n.onnx')
+
+            if os.path.exists(onnx_path):
+                from hardware_manager import hardware_manager
+                backend, target = hardware_manager.get_opencv_dnn_target_backend()
+                net = cv2.dnn.readNetFromONNX(onnx_path)
+                net.setPreferableBackend(backend)
+                net.setPreferableTarget(target)
+                self.yolo_dnn_net = net
+                print(f"Loaded OpenCV DNN YOLO ONNX model into RAM from {onnx_path}.")
+        except Exception as e_onnx:
+            print(f"OpenCV DNN YOLO ONNX note: {e_onnx}")
+
     def _init_models(self):
+        # 0. Initialize local YOLO detector (kept in RAM permanently)
+        self._init_yolo_model()
+
         # 1. Try InsightFace if installed
         try:
             import insightface
@@ -70,24 +123,19 @@ class FaceEngine:
         cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         self.haar_cascade = cv2.CascadeClassifier(cascade_path)
 
-    def detect_and_extract(self, img_bgr):
-        """
-        Detects faces in img_bgr and extracts 128-d or 512-d normalized embedding for each face.
-        Returns list of dicts:
-        [{'bbox': (x, y, w, h), 'embedding': np_ndarray}, ...]
-        """
+    def _detect_faces_in_crop(self, img_bgr):
+        """Extracts face embeddings directly from an image frame or cropped person region."""
         if img_bgr is None or img_bgr.size == 0:
             return []
 
-        h, w, _ = img_bgr.shape
+        h, w = img_bgr.shape[:2]
         results = []
 
-        # A) InsightFace pipeline
         if self.insight_app is not None:
             try:
                 faces = self.insight_app.get(img_bgr)
                 for f in faces:
-                    bbox = f.bbox.astype(int)  # [x1, y1, x2, y2]
+                    bbox = f.bbox.astype(int)
                     x1, y1, x2, y2 = bbox[0], bbox[1], bbox[2], bbox[3]
                     bw, bh = x2 - x1, y2 - y1
                     emb = f.embedding
@@ -97,51 +145,35 @@ class FaceEngine:
                         'embedding': norm_emb
                     })
                 return results
-            except Exception as e:
-                print(f"InsightFace inference error: {e}")
+            except Exception:
+                pass
 
-        # B) OpenCV YuNet + SFace pipeline
         if self.yunet is not None and self.sface is not None:
             try:
                 self.yunet.setInputSize((w, h))
                 _, faces = self.yunet.detect(img_bgr)
-
                 if faces is not None:
                     for face in faces:
                         bbox = face[0:4].astype(int)
                         x, y, bw, bh = bbox[0], bbox[1], bbox[2], bbox[3]
-
-                        # Align & crop face feature vector using SFace
                         aligned_face = self.sface.alignCrop(img_bgr, face)
-                        feat = self.sface.feature(aligned_face)
-                        feat = feat.flatten()
+                        feat = self.sface.feature(aligned_face).flatten()
                         norm_feat = feat / (np.linalg.norm(feat) + 1e-10)
-
                         results.append({
                             'bbox': (max(0, x), max(0, y), max(1, bw), max(1, bh)),
                             'embedding': norm_feat
                         })
-                
-                # If YuNet detected faces, return results
-                if results:
-                    return results
+                    if results:
+                        return results
 
-                # Passport Photo Fallback for SFace: If YuNet found no faces (e.g. tightly cropped passport photo),
-                # extract embedding directly from center/full image
-                try:
-                    aligned_face = cv2.resize(img_bgr, (112, 112))
-                    feat = self.sface.feature(aligned_face).flatten()
-                    norm_feat = feat / (np.linalg.norm(feat) + 1e-10)
-                    return [{
-                        'bbox': (0, 0, w, h),
-                        'embedding': norm_feat
-                    }]
-                except Exception as ex_pf:
-                    print(f"Passport fallback extraction error: {ex_pf}")
-            except Exception as e:
-                print(f"YuNet/SFace extraction error: {e}")
+                # Passport/tight crop fallback
+                aligned_face = cv2.resize(img_bgr, (112, 112))
+                feat = self.sface.feature(aligned_face).flatten()
+                norm_feat = feat / (np.linalg.norm(feat) + 1e-10)
+                return [{'bbox': (0, 0, w, h), 'embedding': norm_feat}]
+            except Exception:
+                pass
 
-        # C) Haar Cascade fallback with Color Histogram / Raw Vector embedding
         if hasattr(self, 'haar_cascade'):
             gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
             faces = self.haar_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
@@ -150,23 +182,63 @@ class FaceEngine:
                 face_resized = cv2.resize(face_roi, (64, 64))
                 emb = face_resized.flatten().astype(np.float32)
                 norm_emb = emb / (np.linalg.norm(emb) + 1e-10)
-                results.append({
-                    'bbox': (x, y, bw, bh),
-                    'embedding': norm_emb
-                })
+                results.append({'bbox': (x, y, bw, bh), 'embedding': norm_emb})
 
-        # Passport Photo Fallback for Haar Cascade / Raw feature
         if not results and img_bgr is not None and img_bgr.size > 0:
             gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
             face_resized = cv2.resize(gray, (64, 64))
             emb = face_resized.flatten().astype(np.float32)
             norm_emb = emb / (np.linalg.norm(emb) + 1e-10)
-            results.append({
-                'bbox': (0, 0, w, h),
-                'embedding': norm_emb
-            })
+            results.append({'bbox': (0, 0, w, h), 'embedding': norm_emb})
 
         return results
+
+    def detect_and_extract(self, img_bgr):
+        """
+        Full Offline Recognition Pipeline:
+        1. YOLO detects every student in classroom image
+        2. Crops every detected person
+        3. Detects face in crop
+        4. Generates embedding vector
+        """
+        if img_bgr is None or img_bgr.size == 0:
+            return []
+
+        h, w = img_bgr.shape[:2]
+        results = []
+
+        # 1. Run local YOLO person detector if loaded in RAM
+        if self.yolo_model is not None:
+            try:
+                yolo_preds = self.yolo_model.predict(img_bgr, classes=[0], verbose=False, conf=0.25)
+                if yolo_preds and len(yolo_preds) > 0:
+                    boxes = yolo_preds[0].boxes
+                    if boxes is not None and len(boxes) > 0:
+                        for box in boxes:
+                            xyxy = box.xyxy[0].cpu().numpy().astype(int)
+                            px1, py1, px2, py2 = max(0, xyxy[0]), max(0, xyxy[1]), min(w, xyxy[2]), min(h, xyxy[3])
+                            pw, ph = px2 - px1, py2 - py1
+
+                            if pw < 20 or ph < 20:
+                                continue
+
+                            person_crop = img_bgr[py1:py2, px1:px2]
+                            crop_faces = self._detect_faces_in_crop(person_crop)
+
+                            for cf in crop_faces:
+                                (cx, cy, cw, ch) = cf['bbox']
+                                results.append({
+                                    'bbox': (px1 + cx, py1 + cy, cw, ch),
+                                    'embedding': cf['embedding']
+                                })
+
+                        if results:
+                            return results
+            except Exception as e_yolo:
+                print(f"YOLO detection note: {e_yolo}")
+
+        # 2. Fallback to direct face detection if YOLO is uninitialized or found no person bounding boxes
+        return self._detect_faces_in_crop(img_bgr)
 
     @staticmethod
     def cosine_similarity(vec1, vec2):

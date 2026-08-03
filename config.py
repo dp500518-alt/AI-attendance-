@@ -104,3 +104,7 @@ if not os.path.exists(YUNET_PATH) and os.path.exists(os.path.join(REPO_MODELS_DI
 SFACE_PATH = os.path.join(MODELS_DIR, 'face_recognition_sface_2021dec.onnx')
 if not os.path.exists(SFACE_PATH) and os.path.exists(os.path.join(REPO_MODELS_DIR, 'face_recognition_sface_2021dec.onnx')):
     SFACE_PATH = os.path.join(REPO_MODELS_DIR, 'face_recognition_sface_2021dec.onnx')
+
+YOLO_MODEL_PATH = os.path.join(MODELS_DIR, 'yolov8n.pt')
+if not os.path.exists(YOLO_MODEL_PATH) and os.path.exists(os.path.join(REPO_MODELS_DIR, 'yolov8n.pt')):
+    YOLO_MODEL_PATH = os.path.join(REPO_MODELS_DIR, 'yolov8n.pt')
