@@ -24,18 +24,59 @@ from flask_cors import CORS
 
 import config
 import database
-import register
-import recognize
-import attendance
-import utils
-import ocr_timetable
 import login_security
 import analytics_reports
 import notifications
-import model_trainer
-import backup_manager
-from camera import camera_instance, decode_base64_image
-from train import train_all_students
+
+# Optional heavy modules – gracefully degrade on Vercel / cloud environments
+try:
+    import register
+except Exception:
+    register = None
+
+try:
+    import recognize
+except Exception:
+    recognize = None
+
+try:
+    import attendance
+except Exception:
+    attendance = None
+
+try:
+    import utils
+except Exception:
+    utils = None
+
+try:
+    import ocr_timetable
+except Exception:
+    ocr_timetable = None
+
+try:
+    import model_trainer
+except Exception:
+    model_trainer = None
+
+try:
+    import backup_manager
+except Exception:
+    backup_manager = None
+
+try:
+    import camera as camera_module
+    camera_instance = camera_module.camera_instance
+    decode_base64_image = camera_module.decode_base64_image
+except Exception:
+    camera_module = None
+    camera_instance = None
+    decode_base64_image = None
+
+try:
+    from train import train_all_students
+except Exception:
+    train_all_students = None
 
 app = Flask(__name__,
             template_folder=os.path.join(FRONTEND_DIR, 'html'),
@@ -155,8 +196,12 @@ def dashboard():
     today_attendance = database.get_attendance_today()
     all_embeddings = database.get_all_embeddings()
     threshold = database.get_setting('recognition_threshold', getattr(config, 'RECOGNITION_THRESHOLD', 0.40))
-    from hardware_manager import hardware_manager
-    hw_status = hardware_manager.get_hardware_status()
+    try:
+        from hardware_manager import hardware_manager
+        hw_status = hardware_manager.get_hardware_status()
+    except Exception:
+        hw_status = {'camera': False, 'gpu': False, 'npu': False}
+
 
     return render_template('index.html', active_page='dashboard', stats=stats, today_attendance=today_attendance, embedded_count=len(all_embeddings), threshold=threshold, hardware=hw_status)
 
@@ -537,9 +582,14 @@ def download_report():
 @app.route('/training', endpoint='training_page')
 @login_required
 def training_dashboard():
-    status = model_trainer.trainer.get_status()
-    logs = model_trainer.trainer.get_logs()
-    meta = model_trainer.load_training_metadata()
+    if model_trainer:
+        status = model_trainer.trainer.get_status()
+        logs = model_trainer.trainer.get_logs()
+        meta = model_trainer.load_training_metadata()
+    else:
+        status = {'state': 'unavailable', 'message': 'AI training not available in this environment'}
+        logs = []
+        meta = {}
     return render_template('training.html', active_page='training', status=status, logs=logs, meta=meta)
 
 @app.route('/training/download', endpoint='download_model')
