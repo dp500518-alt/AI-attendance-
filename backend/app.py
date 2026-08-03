@@ -248,12 +248,36 @@ def register_student():
         phone = request.form.get('phone', '').strip()
 
         sample_images = []
-        if 'webcam_sample_b64' in request.form and request.form['webcam_sample_b64']:
-            sample_images.append(request.form['webcam_sample_b64'])
 
-        files = request.files.getlist('photos')
-        for file in files:
-            if file and file.filename != '':
+        # 1. JSON array of base64 webcam captures (from hidden #samples_json field)
+        samples_json_raw = request.form.get('samples_json', '').strip()
+        if samples_json_raw:
+            try:
+                import json as _json
+                parsed = _json.loads(samples_json_raw)
+                if isinstance(parsed, list):
+                    sample_images.extend([s for s in parsed if s])
+            except Exception:
+                pass  # If it's a single base64 string, treat it directly
+            if not sample_images and samples_json_raw:
+                sample_images.append(samples_json_raw)
+
+        # 2. Passport photo file upload (from #regFileInput)
+        passport_file = request.files.get('regFileInput')
+        if passport_file and passport_file.filename:
+            import base64
+            file_bytes = passport_file.read()
+            b64_str = 'data:image/jpeg;base64,' + base64.b64encode(file_bytes).decode('utf-8')
+            sample_images.append(b64_str)
+
+        # 3. Fallback: legacy 'webcam_sample_b64' single field
+        legacy_b64 = request.form.get('webcam_sample_b64', '').strip()
+        if legacy_b64:
+            sample_images.append(legacy_b64)
+
+        # 4. Fallback: multi-file 'photos' field
+        for file in request.files.getlist('photos'):
+            if file and file.filename:
                 import base64
                 file_bytes = file.read()
                 b64_str = 'data:image/jpeg;base64,' + base64.b64encode(file_bytes).decode('utf-8')
@@ -402,6 +426,13 @@ def view_students():
     for s in students:
         sid = str(s['id'])
         s['has_embedding'] = sid in all_embeddings
+        # Check if the student's dataset folder exists and has at least one image
+        student_dir = os.path.join(config.DATASET_DIR, sid)
+        if os.path.isdir(student_dir):
+            imgs = [f for f in os.listdir(student_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+            s['has_dataset'] = len(imgs) > 0
+        else:
+            s['has_dataset'] = False
 
     departments = database.get_all_departments()
     return render_template('students.html', active_page='students', students=students, total_students=len(students), embedded_count=len(all_embeddings), departments=departments, selected_dept=dept_filter, selected_sem=sem_filter, search_query=query)
