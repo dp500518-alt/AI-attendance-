@@ -1,10 +1,10 @@
 import os
 import shutil
 
-# config.py lives in backend/config/ — go up one level to get the backend root
+# config.py lives in config/ — go up one level to get project root (d:\smart)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# ONNX model files live in the repo root models/ folder (d:\smart\models\)
-REPO_MODELS_DIR = os.path.join(os.path.dirname(BASE_DIR), 'models')
+# ONNX model files live in models/ folder (d:\smart\models\)
+REPO_MODELS_DIR = os.path.join(BASE_DIR, 'models')
 
 # Storage Root Selection:
 #   Windows local PC  → D:\SmartAttendanceServer

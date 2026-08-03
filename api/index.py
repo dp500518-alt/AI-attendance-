@@ -19,18 +19,16 @@ os.environ.setdefault('FLASK_ENV', 'production')
 os.environ.setdefault('FLASK_DEBUG', '0')
 
 # ── 2. Build sys.path so flat `import config` etc. all resolve ──────────────
-_ROOT_DIR    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_BACKEND_DIR = os.path.join(_ROOT_DIR, 'backend')
+_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 for _p in [
     _ROOT_DIR,
-    _BACKEND_DIR,
-    os.path.join(_BACKEND_DIR, 'config'),
-    os.path.join(_BACKEND_DIR, 'database'),
-    os.path.join(_BACKEND_DIR, 'services'),
-    os.path.join(_BACKEND_DIR, 'utils'),
-    os.path.join(_BACKEND_DIR, 'ai', 'recognition'),
-    os.path.join(_BACKEND_DIR, 'ai', 'training'),
+    os.path.join(_ROOT_DIR, 'config'),
+    os.path.join(_ROOT_DIR, 'database'),
+    os.path.join(_ROOT_DIR, 'services'),
+    os.path.join(_ROOT_DIR, 'utils'),
+    os.path.join(_ROOT_DIR, 'ai', 'recognition'),
+    os.path.join(_ROOT_DIR, 'ai', 'training'),
 ]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
@@ -39,7 +37,7 @@ for _p in [
 try:
     import importlib.util as _ilu
 
-    _spec = _ilu.spec_from_file_location('app', os.path.join(_BACKEND_DIR, 'app.py'))
+    _spec = _ilu.spec_from_file_location('app', os.path.join(_ROOT_DIR, 'app.py'))
     _mod  = _ilu.module_from_spec(_spec)
     sys.modules['app'] = _mod
     _spec.loader.exec_module(_mod)

@@ -6,16 +6,15 @@ import time
 import datetime
 from functools import wraps
 
-# Ensure backend root and subpackages are in sys.path
-BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
-FRONTEND_DIR = os.path.abspath(os.path.join(BACKEND_DIR, '..', 'frontend'))
+# Ensure project root and subpackages are in sys.path
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-if BACKEND_DIR not in sys.path:
-    sys.path.insert(0, BACKEND_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 dirs_to_add = ['config', 'database', 'services', 'utils', os.path.join('ai', 'recognition'), os.path.join('ai', 'training')]
 for d in dirs_to_add:
-    p = os.path.join(BACKEND_DIR, d)
+    p = os.path.join(ROOT_DIR, d)
     if p not in sys.path:
         sys.path.insert(0, p)
 
@@ -79,8 +78,8 @@ except Exception:
     train_all_students = None
 
 app = Flask(__name__,
-            template_folder=os.path.join(FRONTEND_DIR, 'html'),
-            static_folder=FRONTEND_DIR,
+            template_folder=os.path.join(ROOT_DIR, 'html'),
+            static_folder=ROOT_DIR,
             static_url_path='/static')
 
 app.secret_key = getattr(config, 'SECRET_KEY', 'smart_attendance_secret_key_2026')

@@ -1,4 +1,7 @@
 # Python
+node_modules/
+.vite/
+.env
 __pycache__/
 *.py[cod]
 *$py.class

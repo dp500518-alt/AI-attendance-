@@ -12,19 +12,19 @@
   "routes": [
     {
       "src": "/static/css/(.*)",
-      "dest": "/frontend/css/$1"
+      "dest": "/css/$1"
     },
     {
       "src": "/static/js/(.*)",
-      "dest": "/frontend/js/$1"
+      "dest": "/js/$1"
     },
     {
       "src": "/static/images/(.*)",
-      "dest": "/frontend/images/$1"
+      "dest": "/images/$1"
     },
     {
       "src": "/static/(.*)",
-      "dest": "/frontend/$1"
+      "dest": "/$1"
     },
     {
       "src": "/(.*)",
