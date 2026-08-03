@@ -28,6 +28,8 @@ logging.basicConfig(
 
 SERVER_START_TIME = time.time()
 
+app = Flask(__name__)
+
 
 @app.route('/')
 @app.route('/health', methods=['GET'])
