@@ -198,3 +198,6 @@ def export_pdf_report(records, title="Attendance_Report"):
 
     buffer.seek(0)
     return buffer.getvalue()
+
+get_full_analytics_data = generate_analytics_data
+

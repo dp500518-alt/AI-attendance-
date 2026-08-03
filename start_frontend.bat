@@ -1,9 +1,7 @@
 @echo off
-title AI Smart Attendance - React Frontend
+title AI Smart Attendance - Pure HTML Frontend
 echo ============================================================
-echo   Starting AI Smart Attendance React + Vite Frontend...
-echo   Web UI: http://localhost:5173/
+echo   Opening AI Smart Attendance Pure HTML Frontend...
+echo   Opening: http://localhost:5000/login
 echo ============================================================
-cd /d "%~dp0frontend"
-cmd /c "npm run dev"
-pause
+start http://localhost:5000/login

@@ -427,6 +427,20 @@ def get_all_students():
     conn.close()
     return [dict(r) for r in rows]
 
+def get_all_departments():
+    """Returns list of distinct departments from database."""
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("SELECT DISTINCT department FROM students WHERE department IS NOT NULL AND department != ''")
+        rows = c.fetchall()
+        depts = [r[0] for r in rows if r[0]]
+        if not depts:
+            depts = ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil']
+        return depts
+    except Exception:
+        return ['Computer Science', 'Information Technology', 'Electronics', 'Mechanical', 'Civil']
+
 def get_students_by_sem_div(semester=None, division=None, department=None):
     conn = get_connection()
     cursor = conn.cursor()
