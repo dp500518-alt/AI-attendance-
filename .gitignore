@@ -43,4 +43,5 @@ env/
 sqlite-src-*/
 persistent_data/
 *.pt
+tools/
 
