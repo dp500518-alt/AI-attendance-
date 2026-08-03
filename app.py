@@ -91,19 +91,25 @@ def login():
             session['user_fullname'] = user.get('full_name') or user['username']
             session['user_dept'] = user.get('department') or ''
 
-            # Process Security Login Tracking & New Device Alert Email
-            sec_result = login_security.process_login_security(
-                username=user['username'],
-                role=user.get('role', 'teacher'),
-                full_name=session['user_fullname'],
-                request_obj=request,
-                session_id=session.get('_id', ''),
-                status='Success'
-            )
+            # Process Security Login Tracking & New Device Alert Email (Safely)
+            try:
+                sec_result = login_security.process_login_security(
+                    username=user['username'],
+                    role=user.get('role', 'teacher'),
+                    full_name=session['user_fullname'],
+                    request_obj=request,
+                    session_id=session.get('_id', ''),
+                    status='Success'
+                )
 
-            if sec_result.get('is_new_device'):
-                flash(f"Welcome back, {session['user_fullname']}! 🔒 New login detected from {sec_result['location']['city']}.", "info")
-            else:
+                if sec_result and sec_result.get('is_new_device'):
+                    loc = sec_result.get('location') or {}
+                    city_name = loc.get('city') or 'Surat'
+                    flash(f"Welcome back, {session['user_fullname']}! 🔒 New login detected from {city_name}.", "info")
+                else:
+                    flash(f"Welcome back, {session['user_fullname']}!", "success")
+            except Exception as e_sec:
+                print(f"Login security notice: {e_sec}")
                 flash(f"Welcome back, {session['user_fullname']}!", "success")
 
             if session['user_role'] == 'student':
@@ -112,16 +118,19 @@ def login():
                 return redirect(url_for('teacher_dashboard'))
             return redirect(url_for('dashboard'))
         else:
-            # Record failed login attempt
+            # Record failed login attempt safely
             if username:
-                login_security.process_login_security(
-                    username=username,
-                    role='unknown',
-                    full_name=username,
-                    request_obj=request,
-                    session_id='',
-                    status='Failed'
-                )
+                try:
+                    login_security.process_login_security(
+                        username=username,
+                        role='unknown',
+                        full_name=username,
+                        request_obj=request,
+                        session_id='',
+                        status='Failed'
+                    )
+                except Exception:
+                    pass
             flash("Invalid username or password. Please try again.", "error")
 
     return render_template('login.html')
