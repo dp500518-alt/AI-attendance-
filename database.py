@@ -323,15 +323,6 @@ def init_db():
     else:
         cursor.execute("UPDATE Users SET role = 'admin' WHERE username = ?", (config.DEFAULT_ADMIN_USER,))
 
-    # Insert default teacher user if not exists
-    cursor.execute("SELECT id FROM Users WHERE username = ?", ('teacher',))
-    if not cursor.fetchone():
-        teacher_pass_hash = generate_password_hash('teacher123')
-        cursor.execute("""
-        INSERT INTO Users (username, password_hash, full_name, department, role, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-        """, ('teacher', teacher_pass_hash, 'Faculty Teacher', 'Computer', 'teacher', now_str))
-
     # Default settings
     cursor.execute("INSERT OR IGNORE INTO Settings (key, value) VALUES ('recognition_threshold', ?)",
                    (str(config.RECOGNITION_THRESHOLD),))
