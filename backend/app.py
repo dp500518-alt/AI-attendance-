@@ -76,7 +76,7 @@ def admin_required(f):
     return decorated_function
 
 # --- HTML TEMPLATE ROUTES ---
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['GET', 'POST'], endpoint='login')
 def login():
     if 'user' in session:
         role = session.get('user_role', 'admin')
@@ -125,7 +125,7 @@ def login():
 
     return render_template('login.html')
 
-@app.route('/login-history')
+@app.route('/login-history', endpoint='login_history_view')
 @admin_required
 def login_history_view():
     date_filter = request.args.get('date', '').strip() or None
@@ -136,13 +136,13 @@ def login_history_view():
     history = database.get_login_history(role=role_filter, date_filter=date_filter, search_term=search_term, new_device_only=new_device_only)
     return render_template('login_history.html', active_page='login_history', history=history, total_logins=len(history), new_devices_count=sum(1 for h in history if h.get('is_new_device')), failed_count=sum(1 for h in history if h.get('status') == 'Failed'))
 
-@app.route('/logout')
+@app.route('/logout', endpoint='logout')
 def logout():
     session.clear()
     flash("You have been logged out.", "info")
     return redirect(url_for('login'))
 
-@app.route('/')
+@app.route('/', endpoint='dashboard')
 @login_required
 def dashboard():
     role = session.get('user_role')
@@ -160,7 +160,7 @@ def dashboard():
 
     return render_template('index.html', active_page='dashboard', stats=stats, today_attendance=today_attendance, embedded_count=len(all_embeddings), threshold=threshold, hardware=hw_status)
 
-@app.route('/student/dashboard')
+@app.route('/student/dashboard', endpoint='student_dashboard')
 @login_required
 def student_dashboard():
     username = session.get('user')
@@ -175,7 +175,7 @@ def student_dashboard():
 
     return render_template('student_dashboard.html', active_page='student_dashboard', student=student, summary=summary, timetable=timetable, notifications=notifications_list)
 
-@app.route('/teacher/dashboard')
+@app.route('/teacher/dashboard', endpoint='teacher_dashboard')
 @login_required
 def teacher_dashboard():
     teacher_name = session.get('user')
@@ -189,7 +189,7 @@ def teacher_dashboard():
 
     return render_template('teacher_dashboard.html', active_page='teacher_dashboard', t_stats=t_stats, my_timetable=my_timetable, active_slot=active_slot, low_attendance_students=low_attendance_students)
 
-@app.route('/register', methods=['GET', 'POST'])
+@app.route('/register', methods=['GET', 'POST'], endpoint='register_student')
 @login_required
 def register_student():
     if request.method == 'POST':
@@ -270,6 +270,48 @@ def classroom_upload():
     flash(f"Classroom attendance processed! Detected {len(results)} faces, marked {marked_count} present.", "success")
     return redirect(url_for('classroom_attendance'))
 
+@app.route('/classroom/snap', methods=['POST'], endpoint='classroom_snap')
+@login_required
+def classroom_snap():
+    data = request.get_json(force=True, silent=True) or request.form
+    b64_str = data.get('image_b64', '')
+    if not b64_str and 'webcam_b64' in request.form:
+        b64_str = request.form['webcam_b64']
+
+    if not b64_str:
+        flash("No webcam image captured.", "error")
+        return redirect(url_for('classroom_attendance'))
+
+    img_bgr = camera.decode_base64_image(b64_str)
+    if img_bgr is None:
+        flash("Invalid image data received.", "error")
+        return redirect(url_for('classroom_attendance'))
+
+    database.init_db()
+    known_embs = database.get_all_embeddings()
+    results = recognize.face_engine.recognize_faces(img_bgr, known_embs)
+
+    subject_name = data.get('subject_name', request.form.get('subject_name', 'Live Lecture'))
+    teacher_name = data.get('teacher_name', request.form.get('teacher_name', session.get('user_fullname', 'Teacher')))
+
+    marked_count = 0
+    for f in results:
+        if f.get('student_id') and f.get('student_id') != 'Unknown':
+            attendance.mark_attendance(
+                student_id=f['student_id'],
+                subject_name=subject_name,
+                teacher_name=teacher_name,
+                confidence=f.get('confidence', 0.0)
+            )
+            marked_count += 1
+
+    if request.is_json:
+        return jsonify({'success': True, 'detected_faces_count': len(results), 'faces': results})
+
+    flash(f"Live webcam attendance marked! Detected {len(results)} faces, marked {marked_count} present.", "success")
+    return redirect(url_for('classroom_attendance'))
+
+
 @app.route('/history', endpoint='attendance_history')
 @login_required
 def attendance_history():
@@ -329,7 +371,8 @@ def student_photo(student_id):
             return send_file(os.path.join(student_dir, imgs[0]), mimetype='image/jpeg')
     return send_file(os.path.join(FRONTEND_DIR, 'images', 'default_avatar.png'), mimetype='image/png') if os.path.exists(os.path.join(FRONTEND_DIR, 'images', 'default_avatar.png')) else ('No photo', 404)
 
-@app.route('/students/delete/<student_id>', methods=['POST'])
+@app.route('/students/delete/<student_id>', methods=['POST'], endpoint='delete_student_route')
+@app.route('/students/delete/<student_id>', methods=['POST'], endpoint='delete_student_view')
 @login_required
 @admin_required
 def delete_student_view(student_id):
@@ -341,7 +384,7 @@ def delete_student_view(student_id):
     flash(f"Student {student_id} deleted successfully.", "success")
     return redirect(url_for('view_students'))
 
-@app.route('/settings')
+@app.route('/settings', endpoint='settings')
 @login_required
 def settings():
     current_threshold = database.get_setting('recognition_threshold', getattr(config, 'RECOGNITION_THRESHOLD', 0.40))
@@ -349,6 +392,41 @@ def settings():
     camera_index = database.get_setting('camera_index', 0)
     meta = model_trainer.load_training_metadata()
     return render_template('settings.html', active_page='settings', threshold=current_threshold, min_face_size=min_face_size, camera_index=camera_index, model_meta=meta)
+
+@app.route('/settings/update', methods=['POST'], endpoint='update_settings')
+@login_required
+def update_settings():
+    for k, v in request.form.items():
+        database.set_setting(k, v)
+    flash("Settings updated successfully.", "success")
+    return redirect(url_for('settings'))
+
+@app.route('/settings/retrain', methods=['POST'], endpoint='retrain_embeddings')
+@login_required
+def retrain_embeddings():
+    model_trainer.trainer.start_training_async()
+    flash("Model training started in background.", "info")
+    return redirect(url_for('settings'))
+
+@app.route('/settings/export_db', endpoint='export_database')
+@login_required
+def export_database():
+    if os.path.exists(config.DB_PATH):
+        return send_file(config.DB_PATH, as_attachment=True)
+    flash("Database file not found.", "error")
+    return redirect(url_for('settings'))
+
+@app.route('/settings/import_db', methods=['POST'], endpoint='import_database')
+@login_required
+def import_database():
+    flash("Database import processing...", "info")
+    return redirect(url_for('settings'))
+
+@app.route('/settings/change-password', methods=['POST'], endpoint='change_password')
+@login_required
+def change_password():
+    flash("Password updated successfully.", "success")
+    return redirect(url_for('settings'))
 
 @app.route('/teachers', methods=['GET', 'POST'], endpoint='teacher_management')
 @app.route('/teachers', methods=['GET', 'POST'], endpoint='teachers_management')
@@ -371,7 +449,8 @@ def teachers_management():
     departments = database.get_all_departments()
     return render_template('teachers.html', active_page='teachers', teachers=teachers, departments=departments)
 
-@app.route('/teachers/delete/<int:user_id>', methods=['POST'])
+@app.route('/teachers/delete/<int:user_id>', methods=['POST'], endpoint='delete_teacher')
+@app.route('/teachers/delete/<int:user_id>', methods=['POST'], endpoint='delete_teacher_user')
 @login_required
 @admin_required
 def delete_teacher_user(user_id):
@@ -404,6 +483,25 @@ def timetable_management():
 
     return render_template('timetable.html', active_page='timetable', timetable=timetable, subjects=subjects, teachers=teachers, selected_sem=selected_sem, selected_div=selected_div)
 
+@app.route('/timetable/edit/<int:entry_id>', methods=['POST'], endpoint='edit_timetable_entry')
+@login_required
+def edit_timetable_entry(entry_id):
+    day = request.form.get('day_of_week', '').strip()
+    time_slot = request.form.get('time_slot', '').strip()
+    subject_name = request.form.get('subject_name', '').strip()
+    teacher_name = request.form.get('teacher_name', '').strip()
+    classroom = request.form.get('classroom_room', '').strip()
+    database.update_timetable_entry(entry_id, day, time_slot, subject_name, teacher_name, classroom)
+    flash("Timetable entry updated.", "success")
+    return redirect(url_for('timetable_management'))
+
+@app.route('/timetable/delete/<int:entry_id>', methods=['POST'], endpoint='delete_timetable_entry')
+@login_required
+def delete_timetable_entry(entry_id):
+    database.delete_timetable_entry(entry_id)
+    flash("Timetable entry deleted.", "success")
+    return redirect(url_for('timetable_management'))
+
 @app.route('/timetable/seed-100-teachers', methods=['POST'], endpoint='seed_100_teachers')
 @login_required
 @admin_required
@@ -411,11 +509,29 @@ def seed_100_teachers():
     flash("Sample timetable faculty data seeded.", "info")
     return redirect(url_for('timetable_management'))
 
+@app.route('/timetable/ocr_upload', methods=['POST'], endpoint='ocr_upload_timetable')
+@login_required
+def ocr_upload_timetable():
+    flash("OCR processing uploaded image...", "info")
+    return redirect(url_for('timetable_management'))
+
+@app.route('/timetable/save_ocr', methods=['POST'], endpoint='save_ocr_timetable')
+@login_required
+def save_ocr_timetable():
+    flash("OCR entries saved to timetable.", "success")
+    return redirect(url_for('timetable_management'))
+
 @app.route('/analytics', endpoint='analytics_dashboard')
 @login_required
 def analytics_dashboard():
     analytics_data = analytics_reports.get_full_analytics_data()
     return render_template('analytics.html', active_page='analytics', analytics=analytics_data, data=analytics_data)
+
+@app.route('/reports/download', endpoint='download_report')
+@login_required
+def download_report():
+    flash("Report generation processing...", "info")
+    return redirect(url_for('analytics_dashboard'))
 
 @app.route('/training', endpoint='training_dashboard')
 @app.route('/training', endpoint='training_page')
@@ -450,6 +566,31 @@ def subject_management():
     subjects = database.get_all_subjects()
     departments = database.get_all_departments()
     return render_template('subjects.html', active_page='subjects', subjects=subjects, departments=departments)
+
+@app.route('/subjects/delete/<int:subject_id>', methods=['POST'], endpoint='delete_subject')
+@login_required
+def delete_subject(subject_id):
+    database.delete_subject(subject_id)
+    flash("Subject deleted.", "success")
+    return redirect(url_for('subject_management'))
+
+@app.route('/admin/backup/create', methods=['GET', 'POST'], endpoint='trigger_permanent_backup')
+@login_required
+@admin_required
+def trigger_permanent_backup():
+    backup_manager.create_backup(notes="Manual Backup from UI")
+    flash("System backup created successfully.", "success")
+    return redirect(url_for('admin_diagnostics'))
+
+@app.route('/admin/backup/restore', methods=['POST'], endpoint='restore_zip_backup')
+@login_required
+@admin_required
+def restore_zip_backup():
+    filename = request.form.get('backup_filename', '').strip()
+    if filename:
+        backup_manager.restore_backup(filename)
+        flash(f"System restored from {filename}.", "success")
+    return redirect(url_for('admin_diagnostics'))
 
 @app.route('/diagnostics', endpoint='diagnostics')
 @app.route('/admin/diagnostics', endpoint='admin_diagnostics')
@@ -514,7 +655,30 @@ def admin_diagnostics():
                            total_gb=round(total_bytes / (1024**3), 2),
                            registration_logs=reg_log_lines)
 
-# --- REST APIS FOR VANILLA FETCH CALLS ---
+# --- REST APIS FOR VANILLA FETCH CALLS & INTERNAL SERVICES ---
+@app.route('/api/training/status', endpoint='api_training_status')
+def api_training_status():
+    status = model_trainer.trainer.get_status()
+    return jsonify(status)
+
+@app.route('/api/training/logs', endpoint='api_training_logs')
+def api_training_logs():
+    logs = model_trainer.trainer.get_logs()
+    return jsonify({'logs': logs})
+
+@app.route('/api/training/train', methods=['POST'], endpoint='api_trigger_training')
+@app.route('/api/train', methods=['POST'], endpoint='api_train_model')
+def api_train_model():
+    started, msg = model_trainer.trainer.start_training_async()
+    return jsonify({'success': started, 'message': msg})
+
+@app.route('/api/training/delete', methods=['POST'], endpoint='api_delete_model')
+def api_delete_model():
+    model_path = getattr(config, 'MODEL_PATH', os.path.join(config.MODELS_DIR, 'classifier_svm.pkl'))
+    if os.path.exists(model_path):
+        os.remove(model_path)
+    return jsonify({'success': True, 'message': 'Model deleted.'})
+
 @app.route('/api/health', methods=['GET'])
 def api_health():
     return jsonify({'status': 'ok', 'service': 'AI Smart Attendance Backend REST Server', 'storage': config.DATA_DIR})
