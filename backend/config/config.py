@@ -1,8 +1,10 @@
 import os
 import shutil
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_MODELS_DIR = os.path.join(BASE_DIR, 'models')
+# config.py lives in backend/config/ — go up one level to get the backend root
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# ONNX model files live in the repo root models/ folder (d:\smart\models\)
+REPO_MODELS_DIR = os.path.join(os.path.dirname(BASE_DIR), 'models')
 
 # Storage Root Selection (Windows Local PC vs Render/Linux Container)
 if os.name == 'nt' and os.path.exists('D:\\'):

@@ -4,6 +4,27 @@ import time
 import json
 import logging
 import datetime
+
+# ── Path Setup ────────────────────────────────────────────────────────────────
+# Resolve backend/ root and inject every subpackage into sys.path so that flat
+# imports like `import config`, `import database`, `import recognize` all work
+# regardless of which directory the process was started from.
+_BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+
+_SUBPACKAGE_DIRS = [
+    _BACKEND_DIR,
+    os.path.join(_BACKEND_DIR, 'config'),
+    os.path.join(_BACKEND_DIR, 'database'),
+    os.path.join(_BACKEND_DIR, 'services'),
+    os.path.join(_BACKEND_DIR, 'utils'),
+    os.path.join(_BACKEND_DIR, 'ai', 'recognition'),
+    os.path.join(_BACKEND_DIR, 'ai', 'training'),
+]
+for _p in _SUBPACKAGE_DIRS:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+# ──────────────────────────────────────────────────────────────────────────────
+
 from flask import Flask, request, jsonify, send_file
 import config
 import database

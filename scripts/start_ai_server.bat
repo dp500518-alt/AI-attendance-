@@ -6,7 +6,7 @@ echo   Permanent Storage Root: D:\SmartAttendanceServer\
 echo   REST API: http://localhost:5001/
 echo ============================================================
 
-cd /d "%~dp0.."
+cd /d "%~dp0..\backend"
 
 :SERVER_LOOP
 echo [%DATE% %TIME%] Starting AI Server process on port 5001...
