@@ -6,9 +6,15 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # ONNX model files live in the repo root models/ folder (d:\smart\models\)
 REPO_MODELS_DIR = os.path.join(os.path.dirname(BASE_DIR), 'models')
 
-# Storage Root Selection (Windows Local PC vs Render/Linux Container)
+# Storage Root Selection:
+#   Windows local PC  → D:\SmartAttendanceServer
+#   Vercel/serverless → /tmp/smart_attendance_data  (only writable path)
+#   Render/other Linux→ backend/data
 if os.name == 'nt' and os.path.exists('D:\\'):
     DEFAULT_PERMANENT_ROOT = r'D:\SmartAttendanceServer'
+elif os.path.isdir('/tmp'):
+    # Vercel and most serverless platforms: /tmp is the only writable directory
+    DEFAULT_PERMANENT_ROOT = '/tmp/smart_attendance_data'
 else:
     DEFAULT_PERMANENT_ROOT = os.path.join(BASE_DIR, 'data')
 
@@ -16,8 +22,8 @@ DATA_DIR = os.environ.get('DATA_DIR', DEFAULT_PERMANENT_ROOT)
 try:
     os.makedirs(DATA_DIR, exist_ok=True)
 except Exception as e:
-    print(f"Notice: Could not access {DATA_DIR} ({e}), falling back to BASE_DIR/data.")
-    DATA_DIR = os.path.join(BASE_DIR, 'data')
+    print(f"Notice: Could not create {DATA_DIR} ({e}), falling back to /tmp.")
+    DATA_DIR = '/tmp/smart_attendance_data'
     os.makedirs(DATA_DIR, exist_ok=True)
 
 # Core Local Permanent Directories inside D:\SmartAttendanceServer

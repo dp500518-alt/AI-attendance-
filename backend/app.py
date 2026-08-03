@@ -88,7 +88,10 @@ CORS(app, supports_credentials=True)
 
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 
-database.init_db()
+try:
+    database.init_db()
+except Exception as _db_init_err:
+    print(f"[app.py] DB init at startup skipped: {_db_init_err}")
 
 @app.context_processor
 def inject_global_data():
