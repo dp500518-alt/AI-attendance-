@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin System Diagnostics & Storage Health - Smart Attendance{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Header Section -->
+    <div class="custom-card mb-4 border-start border-4 border-primary">
+        <div class="card-body-custom d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h4 class="fw-bold mb-1 text-dark">
+                    <i class="bi bi-shield-check text-primary me-2"></i>Admin System Diagnostics & Storage Health
+                </h4>
+                <p class="text-muted small mb-0">
+                    Real-time verification of SQLite Database, Face Embeddings, Dataset Folders, Storage Paths, and Registration Persistence.
+                </p>
+            </div>
+            <div>
+                <a href="{{ url_for('admin_diagnostics') }}" class="btn btn-primary rounded-3">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh Health Check
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metric Cards Grid -->
+    <div class="row g-3 mb-4">
+
+        <!-- Total Students -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="custom-card p-3 h-100 border-start border-4 border-primary">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">Total Students in DB</div>
+                        <div class="fs-3 fw-bold text-primary mt-1">{{ total_students }}</div>
+                    </div>
+                    <div class="rounded-3 p-3 bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-people-fill fs-3"></i>
+                    </div>
+                </div>
+                <div class="mt-2 small text-muted">
+                    <i class="bi bi-database me-1"></i> Loaded from <code>Students</code> table
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Dataset Folders -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="custom-card p-3 h-100 border-start border-4 border-info">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">Total Dataset Folders</div>
+                        <div class="fs-3 fw-bold text-info mt-1">{{ total_dataset_folders }}</div>
+                    </div>
+                    <div class="rounded-3 p-3 bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-folder-fill fs-3"></i>
+                    </div>
+                </div>
+                <div class="mt-2 small text-muted">
+                    <i class="bi bi-folder2-open me-1"></i> Permanent dataset store
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Embeddings -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="custom-card p-3 h-100 border-start border-4 border-success">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">Total Face Embeddings</div>
+                        <div class="fs-3 fw-bold text-success mt-1">{{ total_embeddings }}</div>
+                    </div>
+                    <div class="rounded-3 p-3 bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-cpu-fill fs-3"></i>
+                    </div>
+                </div>
+                <div class="mt-2 small text-muted">
+                    <i class="bi bi-check-circle-fill me-1 text-success"></i> <code>Embeddings</code> table ready
+                </div>
+            </div>
+        </div>
+
+        <!-- Health Status -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="custom-card p-3 h-100 border-start border-4 {% if db_integrity.status == 'healthy' %}border-success{% else %}border-danger{% endif %}">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">Database Integrity</div>
+                        <div class="fs-4 fw-bold {% if db_integrity.status == 'healthy' %}text-success{% else %}text-danger{% endif %} mt-1">
+                            {{ db_integrity.integrity | upper }}
+                        </div>
+                    </div>
+                    <div class="rounded-3 p-3 {% if db_integrity.status == 'healthy' %}bg-success bg-opacity-10 text-success{% else %}bg-danger bg-opacity-10 text-danger{% endif %}">
+                        <i class="bi {% if db_integrity.status == 'healthy' %}bi-shield-check{% else %}bi-exclamation-triangle{% endif %} fs-3"></i>
+                    </div>
+                </div>
+                <div class="mt-2 small text-muted">
+                    <code>PRAGMA integrity_check;</code>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Storage Paths & Health Summary -->
+    <div class="row g-4 mb-4">
+
+        <!-- Path Configurations -->
+        <div class="col-12 col-lg-6">
+            <div class="custom-card h-100">
+                <div class="card-header-custom">
+                    <h6 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-hdd-network-fill me-2 text-primary"></i>Permanent Storage Configuration
+                    </h6>
+                </div>
+                <div class="card-body-custom">
+                    <ul class="list-group list-group-flush rounded-3 border">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold small text-muted">Storage Root</span>
+                            <code class="small text-dark">{{ storage_root }}</code>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold small text-muted">Database Location</span>
+                            <code class="small text-dark">{{ db_location }}</code>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold small text-muted">Dataset Location</span>
+                            <code class="small text-dark">{{ dataset_location }}</code>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold small text-muted">Embeddings Location</span>
+                            <code class="small text-dark">{{ embeddings_location }}</code>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold small text-muted">Available Disk Space</span>
+                            <span class="badge bg-success-subtle text-success border fw-bold">{{ free_gb }} GB Free / {{ total_gb }} GB Total</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Persistence & Missing Items Status -->
+        <div class="col-12 col-lg-6">
+            <div class="custom-card h-100">
+                <div class="card-header-custom d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-clipboard-data-fill me-2 text-warning"></i>Persistence Health Audit
+                    </h6>
+                    <span class="badge {% if missing_dataset_count == 0 and missing_embedding_count == 0 %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                        {% if missing_dataset_count == 0 and missing_embedding_count == 0 %}All Healthy{% else %}Issues Detected{% endif %}
+                    </span>
+                </div>
+                <div class="card-body-custom">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-semibold">Missing Dataset Folders</span>
+                            <span class="badge {% if missing_dataset_count == 0 %}bg-success-subtle text-success{% else %}bg-danger{% endif %} fw-bold">
+                                {{ missing_dataset_count }} Students
+                            </span>
+                        </div>
+                        {% if missing_dataset_count > 0 %}
+                        <div class="alert alert-warning small py-2 mb-0">
+                            <strong>Affected Student IDs:</strong> 
+                            {% for ms in missing_dataset_students %}
+                            <code>{{ ms.id }}</code> ({{ ms.name }}){% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                            <br><small class="text-muted">Note: On restart, photos will automatically recover from SQLite <code>StudentPhotos</code>.</small>
+                        </div>
+                        {% else %}
+                        <small class="text-muted"><i class="bi bi-check-circle-fill text-success me-1"></i>Every registered student has an active dataset folder.</small>
+                        {% endif %}
+                    </div>
+
+                    <hr>
+
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-semibold">Missing Face Embeddings</span>
+                            <span class="badge {% if missing_embedding_count == 0 %}bg-success-subtle text-success{% else %}bg-warning text-dark{% endif %} fw-bold">
+                                {{ missing_embedding_count }} Students
+                            </span>
+                        </div>
+                        {% if missing_embedding_count > 0 %}
+                        <div class="alert alert-info small py-2 mb-0">
+                            <strong>Affected Student IDs:</strong> 
+                            {% for me in missing_embedding_students %}
+                            <code>{{ me.id }}</code> ({{ me.name }}){% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                            <br><small class="text-muted">Note: Missing embeddings will automatically regenerate on next startup or registration cycle.</small>
+                        </div>
+                        {% else %}
+                        <small class="text-muted"><i class="bi bi-check-circle-fill text-success me-1"></i>Every registered student has an active face embedding vector.</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Registration Console Log -->
+    <div class="custom-card mb-4">
+        <div class="card-header-custom d-flex justify-content-between align-items-center">
+            <h6 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-terminal-fill me-2 text-primary"></i>Live Registration Audit Log (<code>registration.log</code>)
+            </h6>
+            <span class="badge bg-secondary-subtle text-body border">Rotated Log Stream</span>
+        </div>
+        <div class="card-body-custom bg-dark text-light p-3 rounded-bottom font-monospace small" style="max-height: 300px; overflow-y: auto;">
+            {% if registration_logs %}
+                {% for log_line in registration_logs %}
+                <div class="{% if 'ERROR' in log_line or 'Failed' in log_line %}text-danger{% elif 'WARNING' in log_line %}text-warning{% elif 'Completed' in log_line or 'Passed' in log_line %}text-success{% else %}text-light{% endif %}">
+                    {{ log_line }}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-muted">No registration log entries recorded yet.</div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

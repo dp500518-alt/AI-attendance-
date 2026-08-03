@@ -37,6 +37,7 @@ TRAINING_LOG_PATH = os.path.join(LOGS_DIR, 'training.log')
 BACKUP_LOG_PATH = os.path.join(LOGS_DIR, 'backup.log')
 ATTENDANCE_LOG_PATH = os.path.join(LOGS_DIR, 'attendance.log')
 ERRORS_LOG_PATH = os.path.join(LOGS_DIR, 'errors.log')
+REGISTRATION_LOG_PATH = os.path.join(LOGS_DIR, 'registration.log')
 
 # Create necessary directories
 ALL_DIRS = [DATA_DIR, DATASET_DIR, EMBEDDINGS_DIR, CAPTURED_DIR, ATTENDANCE_DIR, DB_DIR, MODELS_DIR, LOGS_DIR, BACKUPS_DIR, TRAINING_DIR, UPLOADS_DIR]

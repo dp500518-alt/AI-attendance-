@@ -86,11 +86,25 @@
                     <code>{{ s.id }}</code> | Roll: <strong>{{ s.roll_number }}</strong>
                 </div>
 
-                <div class="mb-3 d-flex justify-content-center flex-wrap gap-1">
+                <div class="mb-2 d-flex justify-content-center flex-wrap gap-1">
                     <span class="badge bg-primary-subtle text-primary">{{ s.department }}</span>
                     <span class="badge bg-secondary-subtle text-body">{{ s.semester }}</span>
                     {% if s.division %}
                     <span class="badge bg-info-subtle text-info">{{ s.division }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="mb-2 d-flex justify-content-center flex-wrap gap-1">
+                    {% if s.has_dataset %}
+                    <span class="badge bg-success-subtle text-success border" style="font-size: 0.7rem;"><i class="bi bi-folder-check me-1"></i>Dataset Ready</span>
+                    {% else %}
+                    <span class="badge bg-danger-subtle text-danger border" style="font-size: 0.7rem;"><i class="bi bi-folder-x me-1"></i>Dataset Missing</span>
+                    {% endif %}
+
+                    {% if s.has_embedding %}
+                    <span class="badge bg-primary-subtle text-primary border" style="font-size: 0.7rem;"><i class="bi bi-cpu me-1"></i>Embedding Ready</span>
+                    {% else %}
+                    <span class="badge bg-warning-subtle text-warning border" style="font-size: 0.7rem;"><i class="bi bi-cpu me-1"></i>Embedding Missing</span>
                     {% endif %}
                 </div>
 

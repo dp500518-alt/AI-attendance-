@@ -393,9 +393,16 @@ def student_list():
     dept_filter = request.args.get('dept', '').strip()
 
     all_students = database.get_all_students()
+    embeddings = database.get_all_embeddings()
     filtered = []
 
     for s in all_students:
+        sid = str(s['id'])
+        student_dir = os.path.join(config.DATASET_DIR, sid)
+        has_dataset = os.path.exists(student_dir) and len([f for f in os.listdir(student_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]) > 0
+        s['has_dataset'] = has_dataset
+        s['has_embedding'] = sid in embeddings
+
         if query:
             q_lower = query.lower()
             if not (q_lower in s.get('name', '').lower() or q_lower in s.get('id', '').lower() or q_lower in s.get('roll_number', '').lower()):
@@ -405,8 +412,6 @@ def student_list():
         if dept_filter and s.get('department') != dept_filter:
             continue
         filtered.append(s)
-
-    embeddings = database.get_all_embeddings()
 
     return render_template('students.html',
                            active_page='students',
@@ -1089,6 +1094,71 @@ def server_info_api():
             'logs': config.LOGS_DIR
         }
     })
+
+@app.route('/admin/diagnostics')
+@app.route('/storage/status')
+@app.route('/diagnostics')
+@login_required
+@admin_required
+def admin_diagnostics():
+    import shutil
+    database.init_db()
+    all_students = database.get_all_students()
+    all_embeddings = database.get_all_embeddings()
+    
+    dataset_dirs = []
+    if os.path.exists(config.DATASET_DIR):
+        dataset_dirs = [d for d in os.listdir(config.DATASET_DIR) if os.path.isdir(os.path.join(config.DATASET_DIR, d))]
+
+    missing_dataset_students = []
+    missing_embedding_students = []
+
+    for s in all_students:
+        sid = str(s['id'])
+        s_dir = os.path.join(config.DATASET_DIR, sid)
+        has_imgs = os.path.exists(s_dir) and len([f for f in os.listdir(s_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]) > 0
+        if not has_imgs:
+            missing_dataset_students.append(s)
+        if sid not in all_embeddings:
+            missing_embedding_students.append(s)
+
+    db_integrity = database.check_db_integrity()
+
+    # Disk usage stats
+    total_bytes, used_bytes, free_bytes = 0, 0, 0
+    try:
+        total_bytes, used_bytes, free_bytes = shutil.disk_usage(config.DATA_DIR)
+    except Exception:
+        pass
+
+    # Read recent lines from registration.log
+    reg_log_lines = []
+    reg_log_path = getattr(config, 'REGISTRATION_LOG_PATH', os.path.join(config.LOGS_DIR, 'registration.log'))
+    if os.path.exists(reg_log_path):
+        try:
+            with open(reg_log_path, 'r', encoding='utf-8', errors='ignore') as f:
+                lines = f.readlines()
+                reg_log_lines = [l.strip() for l in lines[-100:]]
+        except Exception as e_log:
+            reg_log_lines = [f"Error reading registration.log: {e_log}"]
+
+    return render_template('diagnostics.html',
+                           active_page='storage',
+                           total_students=len(all_students),
+                           total_dataset_folders=len(dataset_dirs),
+                           total_embeddings=len(all_embeddings),
+                           missing_dataset_count=len(missing_dataset_students),
+                           missing_dataset_students=missing_dataset_students,
+                           missing_embedding_count=len(missing_embedding_students),
+                           missing_embedding_students=missing_embedding_students,
+                           db_location=config.DB_PATH,
+                           dataset_location=config.DATASET_DIR,
+                           embeddings_location=config.EMBEDDINGS_DIR,
+                           storage_root=config.DATA_DIR,
+                           db_integrity=db_integrity,
+                           free_gb=round(free_bytes / (1024**3), 2),
+                           total_gb=round(total_bytes / (1024**3), 2),
+                           registration_logs=reg_log_lines)
 
 @app.route('/api/model-info', methods=['GET'])
 def model_info_api():

@@ -353,6 +353,12 @@ def init_db():
     conn.commit()
     conn.close()
 
+    # Trigger automatic startup scanning and persistence recovery
+    try:
+        run_startup_database_recovery()
+    except Exception as e_rec:
+        database_logger.error(f"Startup persistence recovery error: {e_rec}")
+
 # User Security Functions
 def verify_user(username, password):
     if not username or not password:
@@ -377,20 +383,50 @@ def change_admin_password(username, new_password):
 
 # Student Functions
 def add_student(student_id, roll_number, name, department, semester, division='Division A', email='', phone=''):
-    def _action():
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute("""
-            INSERT INTO Students (id, roll_number, name, department, semester, division, email, phone, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (student_id.strip(), roll_number.strip(), name.strip(), department.strip(), semester.strip(), division.strip(), email.strip(), phone.strip(), now_str))
-            conn.commit()
-        finally:
-            conn.close()
+    """
+    Inserts student into Students table, immediately commits transaction, and verifies presence.
+    If insertion fails or record cannot be verified, rollbacks and raises an exception.
+    """
+    student_id = str(student_id).strip()
+    roll_number = str(roll_number).strip()
+    name = str(name).strip()
+    department = str(department).strip()
+    semester = str(semester).strip()
+    division = str(division).strip()
+    email = str(email).strip()
+    phone = str(phone).strip()
 
-    execute_with_retry(_action)
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+        INSERT INTO Students (id, roll_number, name, department, semester, division, email, phone, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            roll_number = excluded.roll_number,
+            name = excluded.name,
+            department = excluded.department,
+            semester = excluded.semester,
+            division = excluded.division,
+            email = excluded.email,
+            phone = excluded.phone
+        """, (student_id, roll_number, name, department, semester, division, email, phone, now_str))
+        conn.commit()
+
+        # Immediate verification after commit
+        cursor.execute("SELECT id FROM Students WHERE id = ?", (student_id,))
+        row = cursor.fetchone()
+        if not row:
+            conn.rollback()
+            raise RuntimeError(f"Verification failed: Student '{student_id}' was not found in SQLite database after insertion.")
+        database_logger.info(f"Successfully inserted and verified student {student_id} ({name}) in database.")
+    except Exception as e:
+        conn.rollback()
+        database_logger.error(f"Failed to insert student {student_id}: {e}")
+        raise e
+    finally:
+        conn.close()
 
 def get_all_students():
     conn = get_connection()
@@ -443,32 +479,95 @@ def delete_student(student_id):
     conn.commit()
     conn.close()
 
+# Student Photos Storage Functions
+def save_student_photos(student_id, photo_b64_list):
+    """
+    Persists student sample photos as base64 in SQLite StudentPhotos table for permanent backup.
+    """
+    if not photo_b64_list:
+        return
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("DELETE FROM StudentPhotos WHERE student_id = ?", (str(student_id),))
+        for b64 in photo_b64_list:
+            if b64:
+                cursor.execute("""
+                INSERT INTO StudentPhotos (student_id, photo_b64, created_at)
+                VALUES (?, ?, ?)
+                """, (str(student_id), str(b64), now_str))
+        conn.commit()
+        database_logger.info(f"Saved {len(photo_b64_list)} photos to SQLite StudentPhotos for student {student_id}.")
+    except Exception as e:
+        conn.rollback()
+        database_logger.error(f"Error saving photos for student {student_id}: {e}")
+        raise e
+    finally:
+        conn.close()
+
+def get_student_photos(student_id):
+    """
+    Retrieves base64 photo strings for a given student from SQLite.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT photo_b64 FROM StudentPhotos WHERE student_id = ? ORDER BY id ASC", (str(student_id),))
+    rows = cursor.fetchall()
+    conn.close()
+    return [r['photo_b64'] for r in rows]
+
 # Embeddings Functions
 def save_embedding(student_id, embedding_vector):
-    def _action():
-        if isinstance(embedding_vector, np.ndarray):
-            emb_list = embedding_vector.tolist()
-        else:
-            emb_list = list(embedding_vector)
+    """
+    Saves face embedding vector into Embeddings table, commits, and verifies persistence.
+    """
+    student_id = str(student_id).strip()
+    if isinstance(embedding_vector, np.ndarray):
+        emb_list = embedding_vector.tolist()
+    else:
+        emb_list = list(embedding_vector)
 
-        emb_json = json.dumps(emb_list)
-        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    emb_json = json.dumps(emb_list)
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        conn = get_connection()
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+        INSERT INTO Embeddings (student_id, embedding, updated_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(student_id) DO UPDATE SET
+            embedding = excluded.embedding,
+            updated_at = excluded.updated_at
+        """, (student_id, emb_json, now_str))
+        conn.commit()
+
+        # Immediate verification
+        cursor.execute("SELECT student_id FROM Embeddings WHERE student_id = ?", (student_id,))
+        if not cursor.fetchone():
+            conn.rollback()
+            raise RuntimeError(f"Embedding verification failed for student '{student_id}'.")
+        database_logger.info(f"Successfully saved and verified embedding vector for student {student_id}.")
+    except Exception as e:
+        conn.rollback()
+        database_logger.error(f"Failed to save embedding for student {student_id}: {e}")
+        raise e
+    finally:
+        conn.close()
+
+def get_student_embedding(student_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT embedding FROM Embeddings WHERE student_id = ?", (str(student_id),))
+    row = cursor.fetchone()
+    conn.close()
+    if row and row['embedding']:
         try:
-            cursor = conn.cursor()
-            cursor.execute("""
-            INSERT INTO Embeddings (student_id, embedding, updated_at)
-            VALUES (?, ?, ?)
-            ON CONFLICT(student_id) DO UPDATE SET
-                embedding = excluded.embedding,
-                updated_at = excluded.updated_at
-            """, (student_id, emb_json, now_str))
-            conn.commit()
-        finally:
-            conn.close()
-
-    execute_with_retry(_action)
+            return np.array(json.loads(row['embedding']), dtype=np.float32)
+        except Exception:
+            return None
+    return None
 
 def get_all_embeddings():
     conn = get_connection()
@@ -483,6 +582,68 @@ def get_all_embeddings():
         emb_vec = np.array(json.loads(row['embedding']), dtype=np.float32)
         embeddings_map[student_id] = emb_vec
     return embeddings_map
+
+def run_startup_database_recovery():
+    """
+    Runs automated integrity check and startup recovery scan:
+    - Restores missing dataset folders from StudentPhotos in SQLite.
+    - Automatically regenerates missing face embeddings.
+    """
+    integ = check_db_integrity()
+    if integ.get('status') == 'corrupted':
+        err_msg = f"Database integrity check failed: {integ.get('message')}"
+        database_logger.critical(err_msg)
+        print(f"CRITICAL: {err_msg}")
+        return
+
+    students = get_all_students()
+    if not students:
+        return
+
+    restored_datasets = 0
+    restored_embeddings = 0
+
+    for s in students:
+        sid = str(s['id'])
+        student_dir = os.path.join(config.DATASET_DIR, sid)
+        os.makedirs(student_dir, exist_ok=True)
+
+        image_files = [f for f in os.listdir(student_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        
+        # 1. Restore missing dataset photos from StudentPhotos SQLite table
+        if not image_files:
+            db_photos = get_student_photos(sid)
+            if db_photos:
+                from camera import decode_base64_image
+                import cv2
+                for idx, b64_str in enumerate(db_photos):
+                    try:
+                        img = decode_base64_image(b64_str)
+                        if img is not None and img.size > 0:
+                            fname = f"sample_{idx+1:02d}.jpg"
+                            fpath = os.path.join(student_dir, fname)
+                            cv2.imwrite(fpath, img)
+                    except Exception as err:
+                        database_logger.error(f"Error restoring photo {idx} for {sid}: {err}")
+                image_files = [f for f in os.listdir(student_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+                if image_files:
+                    restored_datasets += 1
+                    database_logger.info(f"[Recovery] Restored {len(image_files)} dataset photos for student {sid} from SQLite.")
+
+        # 2. Automatically regenerate missing embeddings
+        emb = get_student_embedding(sid)
+        if emb is None and image_files:
+            try:
+                from train import generate_embedding_for_student
+                success, msg = generate_embedding_for_student(sid)
+                if success:
+                    restored_embeddings += 1
+                    database_logger.info(f"[Recovery] Regenerated missing face embedding for student {sid}.")
+            except Exception as err:
+                database_logger.error(f"Error regenerating embedding for {sid}: {err}")
+
+    if restored_datasets > 0 or restored_embeddings > 0:
+        database_logger.info(f"[Startup Recovery Summary] Restored {restored_datasets} dataset folders, regenerated {restored_embeddings} embeddings.")
 
 # Attendance Functions
 def mark_attendance(student_id, status='Present', date_str=None, time_str=None, timetable_id=None, subject_name=None, semester=None, division=None):
