@@ -4,14 +4,18 @@ import shutil
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_MODELS_DIR = os.path.join(BASE_DIR, 'models')
 
-# 100% Local PC Permanent Storage Root
-DEFAULT_PERMANENT_ROOT = r'D:\SmartAttendanceServer'
+# Storage Root Selection (Windows Local PC vs Render/Linux Container)
+if os.name == 'nt' and os.path.exists('D:\\'):
+    DEFAULT_PERMANENT_ROOT = r'D:\SmartAttendanceServer'
+else:
+    DEFAULT_PERMANENT_ROOT = os.path.join(BASE_DIR, 'data')
+
+DATA_DIR = os.environ.get('DATA_DIR', DEFAULT_PERMANENT_ROOT)
 try:
-    os.makedirs(DEFAULT_PERMANENT_ROOT, exist_ok=True)
-    DATA_DIR = os.environ.get('DATA_DIR', DEFAULT_PERMANENT_ROOT)
+    os.makedirs(DATA_DIR, exist_ok=True)
 except Exception as e:
-    print(f"Notice: Could not access {DEFAULT_PERMANENT_ROOT} ({e}), falling back to BASE_DIR.")
-    DATA_DIR = os.environ.get('DATA_DIR', os.path.join(BASE_DIR, 'data'))
+    print(f"Notice: Could not access {DATA_DIR} ({e}), falling back to BASE_DIR/data.")
+    DATA_DIR = os.path.join(BASE_DIR, 'data')
     os.makedirs(DATA_DIR, exist_ok=True)
 
 # Core Local Permanent Directories inside D:\SmartAttendanceServer
