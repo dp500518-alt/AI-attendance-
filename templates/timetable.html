@@ -41,7 +41,7 @@
 
             <select name="div" class="form-select form-select-sm rounded-3 shadow-sm" onchange="this.form.submit()">
                 <option value="">All Divisions</option>
-                {% for d in ['Division A', 'Division B', 'Division C', 'Division D'] %}
+                {% for d in ['Division A', 'Division B'] %}
                 <option value="{{ d }}" {% if filter_div == d %}selected{% endif %}>{{ d }}</option>
                 {% endfor %}
             </select>
@@ -226,7 +226,7 @@
                                                     <div class="col-md-6">
                                                         <label class="form-label fw-semibold">Division</label>
                                                         <select name="division" class="form-select rounded-3" required>
-                                                            {% for d in ['Division A', 'Division B', 'Division C', 'Division D'] %}
+                                                            {% for d in ['Division A', 'Division B'] %}
                                                             <option value="{{ d }}" {% if slot.division == d %}selected{% endif %}>{{ d }}</option>
                                                             {% endfor %}
                                                         </select>
@@ -362,11 +362,12 @@
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Department <span class="text-danger">*</span></label>
                             <select name="department" class="form-select rounded-3" required>
-                                <option value="Computer Science">Computer Science</option>
-                                <option value="Information Technology">Information Technology</option>
-                                <option value="Electronics & Communication">Electronics & Communication</option>
-                                <option value="Electrical Engineering">Electrical Engineering</option>
-                                <option value="Mechanical Engineering">Mechanical Engineering</option>
+                                <option value="Electronic & Communication">Electronic & Communication</option>
+                                <option value="Electrical">Electrical</option>
+                                <option value="Mechanical">Mechanical</option>
+                                <option value="Civil">Civil</option>
+                                <option value="Computer">Computer</option>
+                                <option value="Environment">Environment</option>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -385,8 +386,6 @@
                             <select name="division" class="form-select rounded-3" required>
                                 <option value="Division A">Division A</option>
                                 <option value="Division B">Division B</option>
-                                <option value="Division C">Division C</option>
-                                <option value="Division D">Division D</option>
                             </select>
                         </div>
                         <div class="col-md-6">

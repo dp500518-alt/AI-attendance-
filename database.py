@@ -224,7 +224,7 @@ def init_db():
             """, (
                 r.get('teacher_username', 'teacher'),
                 r.get('subject_name', 'Subject'),
-                r.get('department', 'Computer Science'),
+                r.get('department', 'Computer'),
                 r.get('semester', 'Semester 1'),
                 r.get('division', 'Division A'),
                 r.get('day_of_week', 'Monday'),
@@ -330,7 +330,7 @@ def init_db():
         cursor.execute("""
         INSERT INTO Users (username, password_hash, full_name, department, role, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
-        """, ('teacher', teacher_pass_hash, 'Faculty Teacher', 'Computer Science', 'teacher', now_str))
+        """, ('teacher', teacher_pass_hash, 'Faculty Teacher', 'Computer', 'teacher', now_str))
 
     # Default settings
     cursor.execute("INSERT OR IGNORE INTO Settings (key, value) VALUES ('recognition_threshold', ?)",
@@ -1186,16 +1186,16 @@ def seed_100_teachers_and_timetables():
     pass_hash = generate_password_hash("teacher123")
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    departments = ["Computer Science", "Information Technology", "Electronics", "Electrical", "Mechanical"]
+    departments = ["Electronic & Communication", "Electrical", "Mechanical", "Civil", "Computer", "Environment"]
     subjects_pool = [
-        ("CS401", "Digital Signal Processing", "Computer Science", "Semester 4"),
-        ("CS402", "Data Structures & Algorithms", "Computer Science", "Semester 4"),
-        ("CS403", "Database Management Systems", "Computer Science", "Semester 4"),
-        ("CS601", "Artificial Intelligence & ML", "Computer Science", "Semester 6"),
-        ("CS602", "Computer Networks", "Computer Science", "Semester 6"),
-        ("IT501", "Web Technology", "Information Technology", "Semester 5"),
-        ("IT502", "Software Engineering", "Information Technology", "Semester 5"),
-        ("EC301", "Digital Electronics", "Electronics", "Semester 3"),
+        ("CS401", "Digital Signal Processing", "Computer", "Semester 4"),
+        ("CS402", "Data Structures & Algorithms", "Computer", "Semester 4"),
+        ("CS403", "Database Management Systems", "Computer", "Semester 4"),
+        ("CS601", "Artificial Intelligence & ML", "Computer", "Semester 6"),
+        ("CS602", "Computer Networks", "Computer", "Semester 6"),
+        ("EV501", "Environmental Engineering", "Environment", "Semester 5"),
+        ("EV502", "Waste Management", "Environment", "Semester 5"),
+        ("EC301", "Digital Electronics", "Electronic & Communication", "Semester 3"),
         ("EE401", "Control Systems", "Electrical", "Semester 4"),
         ("ME501", "Thermodynamics", "Mechanical", "Semester 5")
     ]
@@ -1209,7 +1209,7 @@ def seed_100_teachers_and_timetables():
         ("15:30", "16:30"),
         ("16:30", "17:30")
     ]
-    divisions = ["Division A", "Division B", "Division C", "Division D"]
+    divisions = ["Division A", "Division B"]
 
     teachers_created = 0
     tt_created = 0

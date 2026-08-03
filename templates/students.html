@@ -19,11 +19,12 @@
             <div class="col-6 col-md-3">
                 <select name="dept" class="form-select" onchange="this.form.submit()">
                     <option value="">All Departments</option>
-                    <option value="Computer Science" {% if dept_filter == 'Computer Science' %}selected{% endif %}>Computer Science</option>
-                    <option value="Information Tech" {% if dept_filter == 'Information Tech' %}selected{% endif %}>Information Tech</option>
-                    <option value="Electronics" {% if dept_filter == 'Electronics' %}selected{% endif %}>Electronics</option>
+                    <option value="Electronic & Communication" {% if dept_filter == 'Electronic & Communication' %}selected{% endif %}>Electronic & Communication</option>
+                    <option value="Electrical" {% if dept_filter == 'Electrical' %}selected{% endif %}>Electrical</option>
                     <option value="Mechanical" {% if dept_filter == 'Mechanical' %}selected{% endif %}>Mechanical</option>
                     <option value="Civil" {% if dept_filter == 'Civil' %}selected{% endif %}>Civil</option>
+                    <option value="Computer" {% if dept_filter == 'Computer' %}selected{% endif %}>Computer</option>
+                    <option value="Environment" {% if dept_filter == 'Environment' %}selected{% endif %}>Environment</option>
                 </select>
             </div>
 

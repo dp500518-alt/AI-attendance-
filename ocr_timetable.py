@@ -9,9 +9,9 @@ import csv
 
 DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 SEMESTERS = [f"Semester {i}" for i in range(1, 9)] + [f"Sem {i}" for i in range(1, 9)]
-DIVISIONS = [f"Division {d}" for d in ["A", "B", "C", "D"]] + [f"Div {d}" for d in ["A", "B", "C", "D"]]
+DIVISIONS = [f"Division {d}" for d in ["A", "B"]] + [f"Div {d}" for d in ["A", "B"]]
 
-def extract_timetable_from_file(file_path, teacher_default="teacher", dept_default="Computer Science"):
+def extract_timetable_from_file(file_path, teacher_default="teacher", dept_default="Computer"):
     """
     Ingests PDF, Excel (.xlsx), CSV, JPG, or PNG files, extracts timetable grid structure,
     and returns a normalized list of parsed entries for interactive user review.

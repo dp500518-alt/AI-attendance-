@@ -21,7 +21,7 @@
                 <label class="form-label small fw-semibold">Division</label>
                 <select name="div" class="form-select">
                     <option value="">All Divisions</option>
-                    {% for d in ['Division A', 'Division B', 'Division C', 'Division D'] %}
+                    {% for d in ['Division A', 'Division B'] %}
                     <option value="{{ d }}" {% if div_filter == d %}selected{% endif %}>{{ d }}</option>
                     {% endfor %}
                 </select>

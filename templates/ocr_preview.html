@@ -58,7 +58,7 @@
                             </td>
                             <td>
                                 <select class="form-select form-select-sm cell-div">
-                                    {% for d in ['Division A', 'Division B', 'Division C', 'Division D'] %}
+                                    {% for d in ['Division A', 'Division B'] %}
                                     <option value="{{ d }}" {% if d in entry.division %}selected{% endif %}>{{ d }}</option>
                                     {% endfor %}
                                 </select>
