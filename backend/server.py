@@ -1,6 +1,22 @@
 import os
 import sys
 import time
+
+# ── Path Setup ────────────────────────────────────────────────────────────────
+_BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+for _p in [
+    _BACKEND_DIR,
+    os.path.join(_BACKEND_DIR, 'config'),
+    os.path.join(_BACKEND_DIR, 'database'),
+    os.path.join(_BACKEND_DIR, 'services'),
+    os.path.join(_BACKEND_DIR, 'utils'),
+    os.path.join(_BACKEND_DIR, 'ai', 'recognition'),
+    os.path.join(_BACKEND_DIR, 'ai', 'training'),
+]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+# ──────────────────────────────────────────────────────────────────────────────
+
 import database
 import config
 import backup_manager
