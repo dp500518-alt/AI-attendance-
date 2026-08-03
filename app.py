@@ -26,6 +26,14 @@ app.secret_key = config.SECRET_KEY
 # Set Max Payload Limit to 100 MB
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = os.environ.get('FRONTEND_URL', '*')
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    return response
+
 # Initialize 100% Local PC Database & Storage Directories on Startup
 database.init_db()
 
