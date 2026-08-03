@@ -359,6 +359,14 @@ class BackgroundTrainer:
             with open(DATE_FILE_PATH, 'w') as f:
                 f.write(now_str)
 
+            # Persist model artifacts into persistent object storage
+            try:
+                from storage_manager import storage_manager
+                for artifact in ['face_classifier.pkl', 'label_encoder.pkl', 'training_metadata.json', 'training_date.txt']:
+                    storage_manager.persist_model_artifact(artifact)
+            except Exception as e_p:
+                self.log(f"Notice: Could not upload model artifacts to persistent storage: {e_p}")
+
             # Also persist mean embeddings into DB for backup cosine similarity matching
             for sid in set(y):
                 indices = np.where(y == sid)[0]
@@ -396,6 +404,13 @@ trainer = BackgroundTrainer()
 def load_training_metadata():
     """Loads metadata JSON or returns default empty structure."""
     meta_path = METADATA_PATH
+    if not os.path.exists(meta_path):
+        try:
+            from storage_manager import storage_manager
+            storage_manager.restore_model_artifact('training_metadata.json')
+        except Exception:
+            pass
+
     if not os.path.exists(meta_path) and os.path.exists(os.path.join(config.REPO_MODELS_DIR, 'training_metadata.json')):
         meta_path = os.path.join(config.REPO_MODELS_DIR, 'training_metadata.json')
 
@@ -427,6 +442,14 @@ def load_classifier_and_encoder():
     """Loads trained SVM/MLP classifier and LabelEncoder if available."""
     clf_path = CLASSIFIER_PATH
     lbl_path = LABEL_ENCODER_PATH
+
+    if not os.path.exists(clf_path) or not os.path.exists(lbl_path):
+        try:
+            from storage_manager import storage_manager
+            storage_manager.restore_model_artifact('face_classifier.pkl')
+            storage_manager.restore_model_artifact('label_encoder.pkl')
+        except Exception:
+            pass
 
     if not os.path.exists(clf_path) and os.path.exists(os.path.join(config.REPO_MODELS_DIR, 'face_classifier.pkl')):
         clf_path = os.path.join(config.REPO_MODELS_DIR, 'face_classifier.pkl')

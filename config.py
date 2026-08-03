@@ -4,9 +4,50 @@ import shutil
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_MODELS_DIR = os.path.join(BASE_DIR, 'models')
 
-# Data directory handling: Permanent 24/7 Local Storage vs Vercel Serverless
-if os.environ.get('VERCEL'):
-    DATA_DIR = os.environ.get('DATA_DIR', '/tmp/SmartAttendanceData')
+def is_container_environment():
+    """
+    Detects whether the app is running locally or in a container/serverless environment.
+    Checks environment variables and container runtime indicator files.
+    """
+    if os.environ.get('STORAGE_MODE') == 'container':
+        return True
+    if os.environ.get('STORAGE_MODE') == 'local':
+        return False
+
+    env_indicators = [
+        'IS_CONTAINER', 'CONTAINER', 'DOCKER_CONTAINER', 'VERCEL',
+        'KUBERNETES_SERVICE_HOST', 'CONTAINER_ENV', 'RENDER', 'RAILWAY_STATIC_URL', 'HEROKU_APP_ID'
+    ]
+    for env in env_indicators:
+        if os.environ.get(env):
+            return True
+
+    if os.path.exists('/.dockerenv') or os.path.exists('/run/.containerenv'):
+        return True
+
+    try:
+        if os.path.exists('/proc/1/cgroup'):
+            with open('/proc/1/cgroup', 'r') as f:
+                content = f.read()
+                if 'docker' in content or 'kubepods' in content or 'containerd' in content:
+                    return True
+    except Exception:
+        pass
+
+    return False
+
+IS_CONTAINER_ENV = is_container_environment()
+
+# Data directory handling: Container Environment vs Permanent Local Host Storage
+if IS_CONTAINER_ENV:
+    # Never use /tmp for permanent data in container environments
+    DEFAULT_CONTAINER_ROOT = os.environ.get('PERSISTENT_STORAGE_PATH', os.path.join(BASE_DIR, 'persistent_data'))
+    DATA_DIR = os.environ.get('DATA_DIR', DEFAULT_CONTAINER_ROOT)
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except Exception:
+        DATA_DIR = os.path.join(BASE_DIR, 'persistent_data')
+        os.makedirs(DATA_DIR, exist_ok=True)
 else:
     DEFAULT_PERMANENT_ROOT = r'D:\SmartAttendanceServer'
     try:
@@ -15,6 +56,14 @@ else:
     except Exception as e:
         print(f"Notice: Could not access {DEFAULT_PERMANENT_ROOT} ({e}), falling back to BASE_DIR.")
         DATA_DIR = os.environ.get('DATA_DIR', BASE_DIR)
+
+# Persistent Database & Object Storage Configurations
+DATABASE_URL = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL') or os.environ.get('SQLITE_PATH')
+S3_BUCKET = os.environ.get('S3_BUCKET', os.environ.get('AWS_S3_BUCKET', 'smart-attendance-storage'))
+S3_ENDPOINT = os.environ.get('S3_ENDPOINT', os.environ.get('AWS_ENDPOINT_URL', ''))
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 
 # Core Permanent Directories
 MODELS_DIR = os.path.join(DATA_DIR, 'models')

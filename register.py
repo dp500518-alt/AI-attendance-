@@ -61,9 +61,10 @@ def register_new_student(student_id, roll_number, name, department, semester, sa
         registration_logger.error(f"[Step 4 Failed] {err_msg}\n{traceback.format_exc()}")
         return False, err_msg
 
-    # Step 5 & 6: Save and Verify Captured Images on Disk
+    # Step 5 & 6: Save and Verify Captured Images on Disk & Object Storage
     saved_count = 0
     if sample_images_b64:
+        from storage_manager import storage_manager
         for idx, img_b64 in enumerate(sample_images_b64):
             try:
                 img_bgr = decode_base64_image(img_b64)
@@ -71,6 +72,7 @@ def register_new_student(student_id, roll_number, name, department, semester, sa
                     filename = f"sample_{idx + 1:02d}.jpg"
                     filepath = os.path.join(student_dir, filename)
                     cv2.imwrite(filepath, img_bgr)
+                    storage_manager.persist_student_photo(student_id, filename, img_bgr)
                     if os.path.exists(filepath):
                         saved_count += 1
             except Exception as e:
