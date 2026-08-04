@@ -549,7 +549,7 @@ def settings():
     min_face_size = database.get_setting('min_face_size', 60)
     camera_index = database.get_setting('camera_index', 0)
     meta = model_trainer.load_training_metadata()
-    return render_template('settings.html', active_page='settings', threshold=current_threshold, min_face_size=min_face_size, camera_index=camera_index, model_meta=meta)
+    return render_template('settings.html', active_page='settings', threshold=current_threshold, min_face_size=min_face_size, camera_index=camera_index, model_meta=meta, data_dir=config.DATA_DIR)
 
 @app.route('/settings/update', methods=['POST'], endpoint='update_settings')
 @login_required
