@@ -1,45 +1,35 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 60,
+      "memory": 1024
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "src": "/static/css/(.*)",
-      "dest": "/css/$1"
+      "source": "/static/css/(.*)",
+      "destination": "/css/$1"
     },
     {
-      "src": "/static/js/(.*)",
-      "dest": "/js/$1"
+      "source": "/static/js/(.*)",
+      "destination": "/js/$1"
     },
     {
-      "src": "/static/images/(.*)",
-      "dest": "/images/$1"
+      "source": "/static/images/(.*)",
+      "destination": "/images/$1"
     },
     {
-      "src": "/static/(.*)",
-      "dest": "/$1"
+      "source": "/static/(.*)",
+      "destination": "/$1"
     },
     {
-      "src": "/(.*)",
-      "dest": "api/index.py"
+      "source": "/(.*)",
+      "destination": "/api/index.py"
     }
   ],
   "env": {
     "FLASK_ENV": "production",
     "FLASK_DEBUG": "0",
     "DATA_DIR": "/tmp/smart_attendance_data"
-  },
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 60,
-      "memory": 1024
-    }
   }
 }
