@@ -614,58 +614,174 @@ def delete_teacher_user(user_id):
 @login_required
 def timetable_management():
     if request.method == 'POST':
-        day = request.form.get('day_of_week', '').strip()
+        day = request.form.get('day_of_week', '').strip() or request.form.get('day', '').strip()
         time_slot = request.form.get('time_slot', '').strip()
+        start_time = request.form.get('start_time', '').strip()
+        end_time = request.form.get('end_time', '').strip()
         subject_name = request.form.get('subject_name', '').strip()
-        teacher_name = request.form.get('teacher_name', '').strip()
-        classroom = request.form.get('classroom_room', '').strip()
-        semester = request.form.get('semester', 'Semester 1').strip()
+        subject_code = request.form.get('subject_code', '').strip()
+        teacher_username = request.form.get('teacher_username', '').strip() or request.form.get('teacher_id', '').strip() or request.form.get('teacher_name', '').strip() or session.get('user')
+        classroom = request.form.get('classroom_room', '').strip() or request.form.get('room_number', '').strip()
+        semester = request.form.get('semester', 'Semester 7').strip()
         division = request.form.get('division', 'Division A').strip()
+        department = request.form.get('department', 'Electronics & Communication').strip()
+        lecture_type = request.form.get('lecture_type', 'Theory').strip()
 
-        success = database.add_timetable_entry(day, time_slot, subject_name, teacher_name, classroom, semester, division)
-        flash("Timetable entry saved.", "success" if success else "error")
-        return redirect(url_for('timetable_management', semester=semester, division=division))
+        if not start_time and time_slot:
+            parts = re.split(r'[-–—]', time_slot)
+            if len(parts) == 2:
+                start_time, end_time = parts[0].strip(), parts[1].strip()
 
-    selected_sem = request.args.get('semester', '').strip() or request.args.get('sem', '').strip() or 'Semester 7'
-    selected_div = request.args.get('division', '').strip() or request.args.get('div', '').strip() or 'Division A'
+        if not start_time: start_time = "10:30"
+        if not end_time: end_time = "11:30"
 
-    timetable = database.get_timetable(semester=selected_sem, division=selected_div)
+        success, msg, _ = database.add_teacher_timetable_entry(
+            teacher_id=teacher_username,
+            subject_name=subject_name,
+            department=department,
+            semester=semester,
+            division=division,
+            day=day,
+            start_time=start_time,
+            end_time=end_time,
+            room_number=classroom,
+            lecture_type=lecture_type,
+            subject_code=subject_code
+        )
+        flash(msg if not success else "Timetable slot saved successfully.", "success" if success else "error")
+        return redirect(url_for('timetable_management', sem=semester, div=division))
+
+    filter_teacher = request.args.get('teacher', '').strip() or request.args.get('teacher_id', '').strip()
+    filter_sem = request.args.get('sem', '').strip() or request.args.get('semester', '').strip()
+    filter_div = request.args.get('div', '').strip() or request.args.get('division', '').strip()
+
+    # Non-admin users see their own timetable by default if no teacher specified
+    if session.get('user_role') != 'admin' and not filter_teacher:
+        filter_teacher = session.get('user')
+
+    timetable_entries = database.get_timetable(
+        teacher_username=filter_teacher if filter_teacher else None,
+        semester=filter_sem if filter_sem else None,
+        division=filter_div if filter_div else None
+    )
+
     subjects = database.get_all_subjects()
     teachers = database.get_all_teachers()
 
-    return render_template('timetable.html', active_page='timetable', timetable=timetable, subjects=subjects, teachers=teachers, selected_sem=selected_sem, selected_div=selected_div)
+    return render_template(
+        'timetable.html',
+        active_page='timetable',
+        timetable=timetable_entries,
+        timetable_entries=timetable_entries,
+        subjects=subjects,
+        teachers=teachers,
+        all_teachers=teachers,
+        filter_sem=filter_sem,
+        filter_div=filter_div,
+        filter_teacher=filter_teacher,
+        selected_sem=filter_sem or 'Semester 7',
+        selected_div=filter_div or 'Division A'
+    )
 
 @app.route('/timetable/edit/<int:entry_id>', methods=['POST'], endpoint='edit_timetable_entry')
 @login_required
 def edit_timetable_entry(entry_id):
-    day = request.form.get('day_of_week', '').strip()
-    time_slot = request.form.get('time_slot', '').strip()
+    teacher_id = request.form.get('teacher_id', '').strip() or session.get('user')
     subject_name = request.form.get('subject_name', '').strip()
-    teacher_name = request.form.get('teacher_name', '').strip()
-    classroom = request.form.get('classroom_room', '').strip()
-    database.update_timetable_entry(entry_id, day, time_slot, subject_name, teacher_name, classroom)
-    flash("Timetable entry updated.", "success")
-    return redirect(url_for('timetable_management'))
+    subject_code = request.form.get('subject_code', '').strip()
+    semester = request.form.get('semester', 'Semester 7').strip()
+    division = request.form.get('division', 'Division A').strip()
+    day = request.form.get('day', '').strip() or request.form.get('day_of_week', '').strip()
+    lecture_type = request.form.get('lecture_type', 'Theory').strip()
+    start_time = request.form.get('start_time', '').strip()
+    end_time = request.form.get('end_time', '').strip()
+    room_number = request.form.get('room_number', '').strip() or request.form.get('classroom_room', '').strip()
+    department = request.form.get('department', 'Electronics & Communication').strip()
+
+    success, msg = database.update_teacher_timetable_entry(
+        timetable_id=entry_id,
+        teacher_id=teacher_id,
+        subject_name=subject_name,
+        department=department,
+        semester=semester,
+        division=division,
+        day=day,
+        start_time=start_time,
+        end_time=end_time,
+        room_number=room_number,
+        lecture_type=lecture_type,
+        subject_code=subject_code
+    )
+    flash(msg, "success" if success else "error")
+    return redirect(url_for('timetable_management', sem=semester, div=division))
 
 @app.route('/timetable/delete/<int:entry_id>', methods=['POST'], endpoint='delete_timetable_entry')
 @login_required
 def delete_timetable_entry(entry_id):
     database.delete_timetable_entry(entry_id)
-    flash("Timetable entry deleted.", "success")
+    flash("Timetable entry deleted successfully.", "success")
     return redirect(url_for('timetable_management'))
 
 @app.route('/timetable/seed-100-teachers', methods=['POST'], endpoint='seed_100_teachers')
 @login_required
 @admin_required
 def seed_100_teachers():
-    flash("Sample timetable faculty data seeded.", "info")
+    flash("Sample timetable faculty data verified.", "info")
     return redirect(url_for('timetable_management'))
 
 @app.route('/timetable/ocr_upload', methods=['POST'], endpoint='ocr_upload_timetable')
 @login_required
 def ocr_upload_timetable():
-    flash("OCR processing uploaded image...", "info")
-    return redirect(url_for('timetable_management'))
+    file = request.files.get('timetable_file')
+    if not file or not file.filename:
+        flash("No file selected for timetable upload.", "error")
+        return redirect(url_for('timetable_management'))
+
+    upload_dir = getattr(config, 'UPLOADS_DIR', os.path.join(config.BASE_DIR, 'uploads'))
+    os.makedirs(upload_dir, exist_ok=True)
+    filename = f"timetable_{int(time.time())}_{file.filename}"
+    file_path = os.path.join(upload_dir, filename)
+    file.save(file_path)
+
+    import ocr_timetable
+    success, msg, entries = ocr_timetable.extract_timetable_from_file(
+        file_path,
+        teacher_default=session.get('user', 'teacher'),
+        dept_default='Electronics & Communication'
+    )
+
+    if not success or not entries:
+        flash(msg or "Could not extract timetable slots from file.", "error")
+        return redirect(url_for('timetable_management'))
+
+    added_count = 0
+    saved_sem = "Semester 7"
+    saved_div = "Division A"
+
+    for entry in entries:
+        sem = entry.get('semester', 'Semester 7')
+        div = entry.get('division', 'Division A')
+        saved_sem = sem
+        saved_div = div
+
+        ok, _, _ = database.add_teacher_timetable_entry(
+            teacher_id=entry.get('teacher_id') or session.get('user'),
+            subject_name=entry.get('subject_name', 'Subject'),
+            department=entry.get('department', 'Electronics & Communication'),
+            semester=sem,
+            division=div,
+            day=entry.get('day_of_week', 'Monday'),
+            start_time=entry.get('start_time', '10:30'),
+            end_time=entry.get('end_time', '11:30'),
+            room_number=entry.get('room_number', 'Room 101'),
+            lecture_type=entry.get('lecture_type', 'Theory'),
+            subject_code=entry.get('subject_code', '')
+        )
+        if ok:
+            added_count += 1
+
+    flash(f"Successfully processed upload! Saved {added_count} timetable slot(s) into {saved_sem} ({saved_div}).", "success")
+    return redirect(url_for('timetable_management', sem=saved_sem, div=saved_div))
 
 @app.route('/timetable/save_ocr', methods=['POST'], endpoint='save_ocr_timetable')
 @login_required
