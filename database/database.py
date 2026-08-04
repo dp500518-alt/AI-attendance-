@@ -38,11 +38,11 @@ def get_connection():
             except Exception as e:
                 database_logger.error(f"Error copying base DB seed: {e}")
 
-    conn = sqlite3.connect(config.DB_PATH, timeout=30.0)
+    conn = sqlite3.connect(config.DB_PATH, timeout=60.0)
     conn.row_factory = sqlite3.Row
     try:
         conn.execute("PRAGMA journal_mode = WAL;")
-        conn.execute("PRAGMA busy_timeout = 30000;")
+        conn.execute("PRAGMA busy_timeout = 60000;")
         conn.execute("PRAGMA foreign_keys = ON;")
         conn.execute("PRAGMA synchronous = NORMAL;")
     except Exception:
@@ -406,7 +406,11 @@ def restore_from_backup_seed():
             if not table_name or table_name not in valid_tables:
                 continue
 
-            cursor.execute(f"SELECT COUNT(*) as cnt FROM {table_name}")
+            if table_name == 'Users':
+                cursor.execute("SELECT COUNT(*) as cnt FROM Users WHERE role = 'teacher'")
+            else:
+                cursor.execute(f"SELECT COUNT(*) as cnt FROM {table_name}")
+
             if cursor.fetchone()['cnt'] == 0:
                 cols = list(rows[0].keys())
                 placeholders = ", ".join(["?"] * len(cols))
@@ -563,6 +567,7 @@ def add_student(student_id, roll_number, name, department, semester, division='D
     """
     Inserts student into Students table, immediately commits transaction, and verifies presence.
     If insertion fails or record cannot be verified, rollbacks and raises an exception.
+    Automatically retries with exponential backoff if SQLite database is locked.
     """
     student_id = str(student_id).strip()
     roll_number = str(roll_number).strip()
@@ -573,37 +578,40 @@ def add_student(student_id, roll_number, name, department, semester, division='D
     email = str(email).strip()
     phone = str(phone).strip()
 
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cursor.execute("""
-        INSERT INTO Students (id, roll_number, name, department, semester, division, email, phone, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-            roll_number = excluded.roll_number,
-            name = excluded.name,
-            department = excluded.department,
-            semester = excluded.semester,
-            division = excluded.division,
-            email = excluded.email,
-            phone = excluded.phone
-        """, (student_id, roll_number, name, department, semester, division, email, phone, now_str))
-        conn.commit()
+    def _do_add_student():
+        conn = get_connection()
+        try:
+            cursor = conn.cursor()
+            now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cursor.execute("""
+            INSERT INTO Students (id, roll_number, name, department, semester, division, email, phone, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                roll_number = excluded.roll_number,
+                name = excluded.name,
+                department = excluded.department,
+                semester = excluded.semester,
+                division = excluded.division,
+                email = excluded.email,
+                phone = excluded.phone
+            """, (student_id, roll_number, name, department, semester, division, email, phone, now_str))
+            conn.commit()
 
-        # Immediate verification after commit
-        cursor.execute("SELECT id FROM Students WHERE id = ?", (student_id,))
-        row = cursor.fetchone()
-        if not row:
+            # Immediate verification after commit
+            cursor.execute("SELECT id FROM Students WHERE id = ?", (student_id,))
+            row = cursor.fetchone()
+            if not row:
+                conn.rollback()
+                raise RuntimeError(f"Verification failed: Student '{student_id}' was not found in SQLite database after insertion.")
+            database_logger.info(f"Successfully inserted and verified student {student_id} ({name}) in database.")
+        except Exception as e:
             conn.rollback()
-            raise RuntimeError(f"Verification failed: Student '{student_id}' was not found in SQLite database after insertion.")
-        database_logger.info(f"Successfully inserted and verified student {student_id} ({name}) in database.")
-    except Exception as e:
-        conn.rollback()
-        database_logger.error(f"Failed to insert student {student_id}: {e}")
-        raise e
-    finally:
-        conn.close()
+            database_logger.error(f"Failed to insert student {student_id}: {e}")
+            raise e
+        finally:
+            conn.close()
+
+    return execute_with_retry(_do_add_student, max_retries=10, delay=0.3)
 
 def get_all_students():
     conn = get_connection()
