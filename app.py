@@ -404,12 +404,18 @@ def classroom_sample_test():
 @login_required
 def classroom_snap():
     data = request.get_json(force=True, silent=True) or request.form
-    b64_str = data.get('image_b64', '')
-    if not b64_str and 'webcam_b64' in request.form:
-        b64_str = request.form['webcam_b64']
+    b64_str = (
+        data.get('snap_b64') or
+        data.get('image_b64') or
+        data.get('webcam_b64') or
+        request.form.get('snap_b64') or
+        request.form.get('image_b64') or
+        request.form.get('webcam_b64') or
+        ''
+    ).strip()
 
     if not b64_str:
-        flash("No webcam image captured.", "error")
+        flash("No webcam image captured. Please start camera feed first.", "error")
         return redirect(url_for('classroom_attendance'))
 
     if decode_base64_image is not None:
@@ -419,31 +425,34 @@ def classroom_snap():
         img_bgr = _decode(b64_str)
 
     if img_bgr is None:
-        flash("Invalid image data received.", "error")
+        flash("Invalid webcam image data received.", "error")
         return redirect(url_for('classroom_attendance'))
 
     database.init_db()
-    known_embs = database.get_all_embeddings()
-    results = recognize.face_engine.recognize_faces(img_bgr, known_embs)
+    teacher_username = session.get('user')
+    slot_id = request.form.get('slot_id', None) or data.get('slot_id', None)
 
-    subject_name = data.get('subject_name', request.form.get('subject_name', 'Live Lecture'))
-    teacher_name = data.get('teacher_name', request.form.get('teacher_name', session.get('user_fullname', 'Teacher')))
+    success, msg, summary = attendance.process_multiple_classroom_images(
+        img_bgr_list=[img_bgr],
+        teacher_username=teacher_username,
+        slot_id=slot_id
+    )
 
-    marked_count = 0
-    for f in results:
-        if f.get('student_id') and f.get('student_id') != 'Unknown':
-            attendance.mark_attendance(
-                student_id=f['student_id'],
-                subject_name=subject_name,
-                teacher_name=teacher_name,
-                confidence=f.get('confidence', 0.0)
-            )
-            marked_count += 1
+    if success and summary:
+        user_key = session.get('user', 'default')
+        CLASSROOM_RESULT_CACHE[user_key] = summary
+        detected = summary.get('total_detected', 0)
+        newly_marked = len(summary.get('newly_marked_present', []))
+        already_marked = len(summary.get('already_marked_present', []))
+        total_present = newly_marked + already_marked
+        if request.is_json:
+            return jsonify({'success': True, 'detected_faces_count': detected, 'summary': summary})
+        flash(f"Live webcam photo processed! Detected {detected} face(s), marked {total_present} present.", "success")
+    else:
+        if request.is_json:
+            return jsonify({'success': False, 'message': msg})
+        flash(msg or "Failed to process live webcam photo.", "error")
 
-    if request.is_json:
-        return jsonify({'success': True, 'detected_faces_count': len(results), 'faces': results})
-
-    flash(f"Live webcam attendance marked! Detected {len(results)} faces, marked {marked_count} present.", "success")
     return redirect(url_for('classroom_attendance'))
 
 
