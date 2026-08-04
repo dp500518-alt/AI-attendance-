@@ -932,21 +932,34 @@ def get_all_users():
 def get_all_teachers():
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, username, full_name, department, role, created_at FROM Users WHERE role = 'teacher' ORDER BY created_at DESC")
+    cursor.execute("PRAGMA table_info(Users);")
+    user_cols = [col['name'] for col in cursor.fetchall()]
+    select_cols = "id, username, full_name, department, role, created_at"
+    if 'email' in user_cols:
+        select_cols += ", email"
+    cursor.execute(f"SELECT {select_cols} FROM Users WHERE role = 'teacher' ORDER BY created_at DESC")
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
-def add_user(username, password, full_name='', department='', role='teacher'):
+def add_user(username, password, full_name='', department='', role='teacher', email=''):
     conn = get_connection()
     cursor = conn.cursor()
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     pass_hash = generate_password_hash(password)
     try:
-        cursor.execute("""
-        INSERT INTO Users (username, password_hash, full_name, department, role, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-        """, (username.strip(), pass_hash, full_name.strip(), department.strip(), role, now_str))
+        cursor.execute("PRAGMA table_info(Users);")
+        user_cols = [col['name'] for col in cursor.fetchall()]
+        if 'email' in user_cols:
+            cursor.execute("""
+            INSERT INTO Users (username, password_hash, full_name, department, role, email, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (username.strip(), pass_hash, full_name.strip(), department.strip(), role, email.strip(), now_str))
+        else:
+            cursor.execute("""
+            INSERT INTO Users (username, password_hash, full_name, department, role, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """, (username.strip(), pass_hash, full_name.strip(), department.strip(), role, now_str))
         conn.commit()
         conn.close()
         return True, "User registered successfully."
@@ -957,12 +970,19 @@ def add_user(username, password, full_name='', department='', role='teacher'):
         conn.close()
         return False, str(e)
 
+def create_teacher_user(username, password, full_name='', department='', email='', role='teacher'):
+    success, msg = add_user(username=username, password=password, full_name=full_name, department=department, role=role, email=email)
+    return {'success': success, 'message': msg}
+
 def delete_user(user_id):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM Users WHERE id = ? AND username != ?", (user_id, config.DEFAULT_ADMIN_USER))
     conn.commit()
     conn.close()
+
+def delete_teacher_user(user_id):
+    delete_user(user_id)
 
 # Timetable & Intelligent Detection Functions
 
