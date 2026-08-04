@@ -294,6 +294,8 @@ def register_student():
 
     return render_template('register.html', active_page='register')
 
+CLASSROOM_RESULT_CACHE = {}
+
 @app.route('/classroom', endpoint='classroom_attendance')
 @login_required
 def classroom_attendance():
@@ -301,7 +303,9 @@ def classroom_attendance():
     subjects = database.get_all_subjects()
     teachers = database.get_all_teachers()
     active_slot = database.get_active_lecture_for_teacher(session.get('user'))
-    return render_template('classroom.html', active_page='classroom', subjects=subjects, teachers=teachers, active_slot=active_slot)
+    user_key = session.get('user', 'default')
+    result_summary = CLASSROOM_RESULT_CACHE.pop(user_key, None)
+    return render_template('classroom.html', active_page='classroom', subjects=subjects, teachers=teachers, active_slot=active_slot, result_summary=result_summary)
 
 @app.route('/classroom/upload', methods=['POST'], endpoint='classroom_upload')
 @login_required
@@ -337,6 +341,8 @@ def classroom_upload():
     )
 
     if success and summary:
+        user_key = session.get('user', 'default')
+        CLASSROOM_RESULT_CACHE[user_key] = summary
         detected = summary.get('total_detected', 0)
         newly_marked = len(summary.get('newly_marked_present', []))
         already_marked = len(summary.get('already_marked_present', []))
@@ -350,6 +356,47 @@ def classroom_upload():
         )
     else:
         flash(msg or "Failed to process classroom photos.", "error")
+
+    return redirect(url_for('classroom_attendance'))
+
+@app.route('/classroom/sample-test', endpoint='classroom_sample_test')
+@login_required
+def classroom_sample_test():
+    import cv2
+    sample_path = os.path.join(config.BASE_DIR, 'public', 'sample_classroom.jpg')
+    if not os.path.exists(sample_path):
+        sample_path = os.path.join(config.BASE_DIR, 'captured', 'classroom_20260730_223503.jpg')
+    
+    if not os.path.exists(sample_path):
+        flash("Sample classroom image not found.", "error")
+        return redirect(url_for('classroom_attendance'))
+
+    img_bgr = cv2.imread(sample_path)
+    if img_bgr is None:
+        flash("Failed to read sample image.", "error")
+        return redirect(url_for('classroom_attendance'))
+
+    database.init_db()
+    teacher_username = session.get('user')
+    active_slot = database.get_active_lecture_for_teacher(teacher_username)
+    slot_id = active_slot['id'] if active_slot else None
+
+    success, msg, summary = attendance.process_multiple_classroom_images(
+        img_bgr_list=[img_bgr],
+        teacher_username=teacher_username,
+        slot_id=slot_id
+    )
+
+    if success and summary:
+        user_key = session.get('user', 'default')
+        CLASSROOM_RESULT_CACHE[user_key] = summary
+        detected = summary.get('total_detected', 0)
+        newly_marked = len(summary.get('newly_marked_present', []))
+        already_marked = len(summary.get('already_marked_present', []))
+        total_present = newly_marked + already_marked
+        flash(f"Sample classroom photo processed! Detected {detected} face(s), marked {total_present} present.", "success")
+    else:
+        flash(msg or "Failed to process sample classroom image.", "error")
 
     return redirect(url_for('classroom_attendance'))
 
