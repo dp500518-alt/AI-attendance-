@@ -460,19 +460,19 @@ def seed_faculty_and_timetable_if_empty():
     has_email = 'email' in user_cols
 
     for f in FACULTY_LIST:
-        for uname in [f['abbr'], f['username']]:
-            cursor.execute("SELECT id FROM Users WHERE username = ?", (uname,))
-            if not cursor.fetchone():
-                if has_email:
-                    cursor.execute("""
-                    INSERT INTO Users (username, password_hash, full_name, department, role, email, created_at)
-                    VALUES (?, ?, ?, ?, 'teacher', ?, ?)
-                    """, (uname, pass_hash, f['full_name'], f['dept'], f"{uname}@gecsurat.ac.in", now_str))
-                else:
-                    cursor.execute("""
-                    INSERT INTO Users (username, password_hash, full_name, department, role, created_at)
-                    VALUES (?, ?, ?, ?, 'teacher', ?)
-                    """, (uname, pass_hash, f['full_name'], f['dept'], now_str))
+        uname = f['username']
+        cursor.execute("SELECT id FROM Users WHERE username = ?", (uname,))
+        if not cursor.fetchone():
+            if has_email:
+                cursor.execute("""
+                INSERT INTO Users (username, password_hash, full_name, department, role, email, created_at)
+                VALUES (?, ?, ?, ?, 'teacher', ?, ?)
+                """, (uname, pass_hash, f['full_name'], f['dept'], f"{uname}@gecsurat.ac.in", now_str))
+            else:
+                cursor.execute("""
+                INSERT INTO Users (username, password_hash, full_name, department, role, created_at)
+                VALUES (?, ?, ?, ?, 'teacher', ?)
+                """, (uname, pass_hash, f['full_name'], f['dept'], now_str))
 
     SUBJECTS_LIST = [
         ('DSP', 'Digital Signal Processing', 'Electronics & Communication', 'Semester 7'),
@@ -1172,11 +1172,35 @@ def create_teacher_user(username, password, full_name='', department='', email='
     return {'success': success, 'message': msg}
 
 def delete_user(user_id):
+    """
+    Safely deletes a user account (teacher/admin) and removes associated timetable records.
+    Prevents deletion of default admin user.
+    """
     conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM Users WHERE id = ? AND username != ?", (user_id, config.DEFAULT_ADMIN_USER))
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT username FROM Users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return
+
+        username = row['username']
+        if username == getattr(config, 'DEFAULT_ADMIN_USER', 'admin'):
+            conn.close()
+            return
+
+        cursor.execute("DELETE FROM teacher_timetable WHERE teacher_id = ?", (username,))
+        cursor.execute("DELETE FROM Timetable WHERE teacher_username = ?", (username,))
+        cursor.execute("DELETE FROM Users WHERE id = ?", (user_id,))
+        conn.commit()
+        database_logger.info(f"Successfully deleted user '{username}' (ID: {user_id}).")
+    except Exception as e:
+        conn.rollback()
+        database_logger.error(f"Error deleting user {user_id}: {e}")
+        raise e
+    finally:
+        conn.close()
 
 def delete_teacher_user(user_id):
     delete_user(user_id)
