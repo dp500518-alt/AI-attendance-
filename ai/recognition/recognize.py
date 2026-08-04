@@ -11,7 +11,8 @@ class FaceEngine:
         self.sface = None
         self.insight_app = None
         self.yolo_model = None
-        self._init_models()
+        if os.environ.get('VERCEL') != '1':
+            self._init_models()
 
     def _ensure_model_file(self, url, file_path):
         if not os.path.exists(file_path):

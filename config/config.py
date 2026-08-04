@@ -62,8 +62,8 @@ def auto_migrate_legacy_data():
     Safely migrates legacy data from project workspace into D:\SmartAttendanceServer\
     if it exists and has not yet been copied. Never deletes workspace originals.
     """
-    if DATA_DIR == BASE_DIR:
-        return  # Same directory, no migration needed
+    if os.environ.get('VERCEL') == '1' or DATA_DIR == BASE_DIR:
+        return  # Fast cold start on Vercel
 
     migrations = [
         (os.path.join(BASE_DIR, 'database'), DB_DIR),

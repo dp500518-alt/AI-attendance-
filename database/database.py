@@ -780,6 +780,9 @@ def run_startup_database_recovery():
     - Restores missing dataset folders from StudentPhotos in SQLite.
     - Automatically regenerates missing face embeddings.
     """
+    if os.environ.get('VERCEL') == '1':
+        return  # Fast startup on Vercel serverless
+
     integ = check_db_integrity()
     if integ.get('status') == 'corrupted':
         err_msg = f"Database integrity check failed: {integ.get('message')}"
