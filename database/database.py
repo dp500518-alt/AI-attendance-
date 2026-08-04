@@ -1065,15 +1065,15 @@ def get_teacher_timetable(teacher_username=None, semester=None, division=None, d
     """
     params = []
 
-    if teacher_username:
-        query += " AND tt.teacher_id = ?"
-        params.append(teacher_username)
-    if semester:
-        query += " AND tt.semester = ?"
-        params.append(semester)
-    if division:
-        query += " AND tt.division = ?"
-        params.append(division)
+    if teacher_username and str(teacher_username).strip() not in ['', 'None', 'all', 'All Teachers']:
+        query += " AND (tt.teacher_id = ? OR u.full_name LIKE ?)"
+        params.extend([teacher_username.strip(), f"%{teacher_username.strip()}%"])
+    if semester and str(semester).strip() not in ['', 'None', 'all', 'All Semesters']:
+        query += " AND (tt.semester = ? OR tt.semester LIKE ?)"
+        params.extend([semester.strip(), f"%{semester.strip()}%"])
+    if division and str(division).strip() not in ['', 'None', 'all', 'All Divisions']:
+        query += " AND (tt.division = ? OR tt.division LIKE ?)"
+        params.extend([division.strip(), f"%{division.strip()}%"])
     if day_of_week:
         query += " AND (tt.day = ? OR tt.day LIKE ?)"
         params.extend([day_of_week, f"%{day_of_week}%"])

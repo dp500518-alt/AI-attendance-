@@ -625,8 +625,8 @@ def timetable_management():
         flash("Timetable entry saved.", "success" if success else "error")
         return redirect(url_for('timetable_management', semester=semester, division=division))
 
-    selected_sem = request.args.get('semester', 'Semester 1')
-    selected_div = request.args.get('division', 'Division A')
+    selected_sem = request.args.get('semester', '').strip() or request.args.get('sem', '').strip() or 'Semester 7'
+    selected_div = request.args.get('division', '').strip() or request.args.get('div', '').strip() or 'Division A'
 
     timetable = database.get_timetable(semester=selected_sem, division=selected_div)
     subjects = database.get_all_subjects()
