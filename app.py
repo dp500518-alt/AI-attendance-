@@ -77,10 +77,17 @@ try:
 except Exception:
     train_all_students = None
 
+import jinja2
+
 app = Flask(__name__,
             template_folder=os.path.join(ROOT_DIR, 'html'),
             static_folder=ROOT_DIR,
             static_url_path='/static')
+
+app.jinja_loader = jinja2.ChoiceLoader([
+    jinja2.FileSystemLoader(os.path.join(ROOT_DIR, 'html')),
+    jinja2.FileSystemLoader(ROOT_DIR),
+])
 
 app.secret_key = getattr(config, 'SECRET_KEY', 'smart_attendance_secret_key_2026')
 CORS(app, supports_credentials=True)
