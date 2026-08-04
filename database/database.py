@@ -344,11 +344,131 @@ def init_db():
     conn.commit()
     conn.close()
 
+    # Automatically seed faculty accounts & BE SEM VII A timetable if empty
+    try:
+        seed_faculty_and_timetable_if_empty()
+    except Exception as e_seed:
+        database_logger.error(f"Error seeding faculty and timetable: {e_seed}")
+
     # Trigger automatic startup scanning and persistence recovery
     try:
         run_startup_database_recovery()
     except Exception as e_rec:
         database_logger.error(f"Startup persistence recovery error: {e_rec}")
+
+def seed_faculty_and_timetable_if_empty():
+    """
+    Ensures all 16 faculty accounts and BE SEM VII A timetable schedule & subjects are permanently seeded.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    FACULTY_LIST = [
+        {'abbr': 'vgp', 'username': 'vgpatel', 'full_name': 'Prof. V.G.Patel', 'dept': 'Electronics & Communication'},
+        {'abbr': 'tpd', 'username': 'tpdave', 'full_name': 'Prof. T.P.Dave', 'dept': 'Electronics & Communication'},
+        {'abbr': 'ntd', 'username': 'ntdave', 'full_name': 'Prof. N. T. Dave', 'dept': 'Electronics & Communication'},
+        {'abbr': 'djp', 'username': 'djpatel', 'full_name': 'Prof. D.J.Patel', 'dept': 'Electronics & Communication'},
+        {'abbr': 'rnr', 'username': 'rnrathod', 'full_name': 'Prof. R.N.Rathod', 'dept': 'Electronics & Communication'},
+        {'abbr': 'pvp', 'username': 'vpithadia', 'full_name': 'Prof. V.Pithadia', 'dept': 'Electronics & Communication'},
+        {'abbr': 'kit', 'username': 'kitandel', 'full_name': 'Prof. K. I. Tandel', 'dept': 'Electronics & Communication'},
+        {'abbr': 'tsp', 'username': 'tspatel', 'full_name': 'Prof. T. S.Patel', 'dept': 'Electronics & Communication'},
+        {'abbr': 'jrr', 'username': 'jrrana', 'full_name': 'Prof. J.R.Rana', 'dept': 'Electronics & Communication'},
+        {'abbr': 'hhm', 'username': 'hhmakwana', 'full_name': 'Prof. H.H.Makwana', 'dept': 'Electronics & Communication'},
+        {'abbr': 'tcl', 'username': 'tclad', 'full_name': 'Prof. T. C. Lad', 'dept': 'Electronics & Communication'},
+        {'abbr': 'nkp', 'username': 'nkpatel', 'full_name': 'Prof. N.K.Patel', 'dept': 'Electronics & Communication'},
+        {'abbr': 'add', 'username': 'addhimmar', 'full_name': 'Prof. A.D.Dhimmar', 'dept': 'Electronics & Communication'},
+        {'abbr': 'bap', 'username': 'bapatel', 'full_name': 'Prof. B.A.Patel', 'dept': 'Electronics & Communication'},
+        {'abbr': 'ga', 'username': 'gagrawal', 'full_name': 'Prof. G. Agrawal', 'dept': 'Electronics & Communication'},
+        {'abbr': 'vf', 'username': 'vf', 'full_name': 'Visiting Faculty', 'dept': 'Electronics & Communication'}
+    ]
+
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    pass_hash = generate_password_hash("teacher123")
+
+    cursor.execute("PRAGMA table_info(Users);")
+    user_cols = [col['name'] for col in cursor.fetchall()]
+    has_email = 'email' in user_cols
+
+    for f in FACULTY_LIST:
+        for uname in [f['abbr'], f['username']]:
+            cursor.execute("SELECT id FROM Users WHERE username = ?", (uname,))
+            if not cursor.fetchone():
+                if has_email:
+                    cursor.execute("""
+                    INSERT INTO Users (username, password_hash, full_name, department, role, email, created_at)
+                    VALUES (?, ?, ?, ?, 'teacher', ?, ?)
+                    """, (uname, pass_hash, f['full_name'], f['dept'], f"{uname}@gecsurat.ac.in", now_str))
+                else:
+                    cursor.execute("""
+                    INSERT INTO Users (username, password_hash, full_name, department, role, created_at)
+                    VALUES (?, ?, ?, ?, 'teacher', ?)
+                    """, (uname, pass_hash, f['full_name'], f['dept'], now_str))
+
+    SUBJECTS_LIST = [
+        ('DSP', 'Digital Signal Processing', 'Electronics & Communication', 'Semester 7'),
+        ('WC', 'Wireless Communication', 'Electronics & Communication', 'Semester 7'),
+        ('IML', 'Introduction of Machine learning', 'Electronics & Communication', 'Semester 7'),
+        ('IOT', 'Internet of Things', 'Electronics & Communication', 'Semester 7'),
+        ('AI', 'Introduction of Artificial Intelligence', 'Electronics & Communication', 'Semester 7'),
+        ('TV', 'Testing and Verification', 'Electronics & Communication', 'Semester 7'),
+    ]
+    for code, name, dept, sem in SUBJECTS_LIST:
+        cursor.execute("SELECT id FROM Subjects WHERE name = ? AND semester = ?", (name, sem))
+        if not cursor.fetchone():
+            cursor.execute("""
+            INSERT INTO Subjects (code, name, department, semester) VALUES (?, ?, ?, ?)
+            """, (code, name, dept, sem))
+
+    cursor.execute("SELECT COUNT(*) as cnt FROM teacher_timetable WHERE semester = 'Semester 7'")
+    if cursor.fetchone()['cnt'] == 0:
+        TIMETABLE_ENTRIES = [
+            {'day': 'Monday', 'start': '10:30', 'end': '11:30', 'subject': 'Wireless Communication', 'code': 'WC', 'teacher': 'tpd', 'room': 'EC-204A', 'type': 'Theory'},
+            {'day': 'Monday', 'start': '11:30', 'end': '12:30', 'subject': 'Wireless Communication', 'code': 'WC', 'teacher': 'tpd', 'room': 'EC-204A', 'type': 'Theory'},
+            {'day': 'Monday', 'start': '13:10', 'end': '14:10', 'subject': 'Introduction of Machine learning', 'code': 'IML', 'teacher': 'add', 'room': 'EC-206', 'type': 'Theory'},
+            {'day': 'Monday', 'start': '14:10', 'end': '15:10', 'subject': 'Internet of Things', 'code': 'IOT', 'teacher': 'rnr', 'room': 'EC-206', 'type': 'Theory'},
+            {'day': 'Monday', 'start': '15:30', 'end': '16:30', 'subject': 'Wireless Communication', 'code': 'WC', 'teacher': 'tpd', 'room': 'EC-108', 'type': 'Theory'},
+            {'day': 'Monday', 'start': '16:30', 'end': '17:30', 'subject': 'Testing and Verification', 'code': 'TV', 'teacher': 'ga', 'room': 'EC-108', 'type': 'Theory'},
+
+            {'day': 'Tuesday', 'start': '10:30', 'end': '11:30', 'subject': 'Testing and Verification', 'code': 'TV', 'teacher': 'hhm', 'room': 'EC-202', 'type': 'Theory'},
+            {'day': 'Tuesday', 'start': '11:30', 'end': '12:30', 'subject': 'Internet of Things', 'code': 'IOT', 'teacher': 'tsp', 'room': 'EC-202', 'type': 'Theory'},
+            {'day': 'Tuesday', 'start': '13:10', 'end': '14:10', 'subject': 'Internet of Things', 'code': 'IOT', 'teacher': 'tsp', 'room': 'EC-204A', 'type': 'Practical'},
+            {'day': 'Tuesday', 'start': '14:10', 'end': '15:10', 'subject': 'Internet of Things', 'code': 'IOT', 'teacher': 'tsp', 'room': 'EC-204A', 'type': 'Practical'},
+            {'day': 'Tuesday', 'start': '15:30', 'end': '16:30', 'subject': 'Digital Signal Processing', 'code': 'DSP', 'teacher': 'ntd', 'room': 'EC-204B', 'type': 'Practical'},
+            {'day': 'Tuesday', 'start': '16:30', 'end': '17:30', 'subject': 'Digital Signal Processing', 'code': 'DSP', 'teacher': 'ntd', 'room': 'EC-204B', 'type': 'Practical'},
+
+            {'day': 'Wednesday', 'start': '10:30', 'end': '11:30', 'subject': 'Introduction of Artificial Intelligence', 'code': 'AI', 'teacher': 'bap', 'room': 'EC-101', 'type': 'Practical'},
+            {'day': 'Wednesday', 'start': '11:30', 'end': '12:30', 'subject': 'Introduction of Artificial Intelligence', 'code': 'AI', 'teacher': 'bap', 'room': 'EC-101', 'type': 'Practical'},
+            {'day': 'Wednesday', 'start': '13:10', 'end': '14:10', 'subject': 'Introduction of Artificial Intelligence', 'code': 'AI', 'teacher': 'bap', 'room': 'EC-206', 'type': 'Theory'},
+            {'day': 'Wednesday', 'start': '14:10', 'end': '15:10', 'subject': 'Testing and Verification', 'code': 'TV', 'teacher': 'hhm', 'room': 'EC-206', 'type': 'Theory'},
+            {'day': 'Wednesday', 'start': '15:30', 'end': '16:30', 'subject': 'Wireless Communication', 'code': 'WC', 'teacher': 'tpd', 'room': 'EC-108', 'type': 'Theory'},
+            {'day': 'Wednesday', 'start': '16:30', 'end': '17:30', 'subject': 'Digital Signal Processing', 'code': 'DSP', 'teacher': 'ntd', 'room': 'EC-108', 'type': 'Theory'},
+
+            {'day': 'Thursday', 'start': '10:30', 'end': '11:30', 'subject': 'Introduction of Machine learning', 'code': 'IML', 'teacher': 'kit', 'room': 'EC-101', 'type': 'Practical'},
+            {'day': 'Thursday', 'start': '11:30', 'end': '12:30', 'subject': 'Introduction of Machine learning', 'code': 'IML', 'teacher': 'kit', 'room': 'EC-101', 'type': 'Practical'},
+            {'day': 'Thursday', 'start': '13:10', 'end': '14:10', 'subject': 'Introduction of Artificial Intelligence', 'code': 'AI', 'teacher': 'bap', 'room': 'EC-206', 'type': 'Theory'},
+            {'day': 'Thursday', 'start': '14:10', 'end': '15:10', 'subject': 'Wireless Communication', 'code': 'WC', 'teacher': 'bap', 'room': 'EC-206', 'type': 'Theory'},
+            {'day': 'Thursday', 'start': '15:30', 'end': '16:30', 'subject': 'Introduction of Machine learning', 'code': 'IML', 'teacher': 'kit', 'room': 'EC-106', 'type': 'Theory'},
+            {'day': 'Thursday', 'start': '16:30', 'end': '17:30', 'subject': 'Introduction of Machine learning', 'code': 'IML', 'teacher': 'kit', 'room': 'EC-106', 'type': 'Theory'},
+
+            {'day': 'Friday', 'start': '10:30', 'end': '11:30', 'subject': 'Digital Signal Processing', 'code': 'DSP', 'teacher': 'tcl', 'room': 'EC-107', 'type': 'Theory'},
+            {'day': 'Friday', 'start': '11:30', 'end': '12:30', 'subject': 'Digital Signal Processing', 'code': 'DSP', 'teacher': 'ntd', 'room': 'EC-107', 'type': 'Theory'},
+            {'day': 'Friday', 'start': '13:10', 'end': '14:10', 'subject': 'Testing and Verification', 'code': 'TV', 'teacher': 'hhm', 'room': 'EC-204A', 'type': 'Practical'},
+            {'day': 'Friday', 'start': '14:10', 'end': '15:10', 'subject': 'Testing and Verification', 'code': 'TV', 'teacher': 'hhm', 'room': 'EC-204A', 'type': 'Practical'},
+        ]
+        for e in TIMETABLE_ENTRIES:
+            cursor.execute("""
+            INSERT INTO teacher_timetable (
+                teacher_id, subject_code, subject_name, department, semester, division, day, start_time, end_time, room_number, lecture_type, academic_year, created_at, updated_at
+            ) VALUES (?, ?, ?, 'Electronics & Communication', 'Semester 7', 'Division A', ?, ?, ?, ?, ?, '2026-2027', ?, ?)
+            """, (e['teacher'], e['code'], e['subject'], e['day'], e['start'], e['end'], e['room'], e['type'], now_str, now_str))
+
+            cursor.execute("""
+            INSERT INTO Timetable (teacher_username, subject_name, department, semester, division, day_of_week, start_time, end_time, room_number, created_at)
+            VALUES (?, ?, 'Electronics & Communication', 'Semester 7', 'Division A', ?, ?, ?, ?, ?)
+            """, (e['teacher'], e['subject'], e['day'], e['start'], e['end'], e['room'], now_str))
+
+    conn.commit()
+    conn.close()
 
 # User Security Functions
 def verify_user(username, password):
@@ -937,7 +1057,7 @@ def get_all_teachers():
     select_cols = "id, username, full_name, department, role, created_at"
     if 'email' in user_cols:
         select_cols += ", email"
-    cursor.execute(f"SELECT {select_cols} FROM Users WHERE role = 'teacher' ORDER BY created_at DESC")
+    cursor.execute(f"SELECT {select_cols} FROM Users WHERE role IN ('teacher', 'admin') ORDER BY created_at DESC")
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]

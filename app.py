@@ -590,15 +590,16 @@ def teachers_management():
         full_name = request.form.get('full_name', '').strip()
         department = request.form.get('department', '').strip()
         email = request.form.get('email', '').strip()
+        role = request.form.get('role', 'teacher').strip()
 
         if username and password:
-            res = database.create_teacher_user(username, password, full_name, department, email)
+            res = database.create_teacher_user(username, password, full_name, department, email, role=role)
             flash(res['message'], "success" if res['success'] else "error")
         return redirect(url_for('teachers_management'))
 
     teachers = database.get_all_teachers()
     departments = database.get_all_departments()
-    return render_template('teachers.html', active_page='teachers', teachers=teachers, departments=departments)
+    return render_template('teachers.html', active_page='teachers', users=teachers, teachers=teachers, departments=departments)
 
 @app.route('/teachers/delete/<int:user_id>', methods=['POST'], endpoint='delete_teacher')
 @app.route('/teachers/delete/<int:user_id>', methods=['POST'], endpoint='delete_teacher_user')
