@@ -608,13 +608,15 @@ def teachers_management():
     departments = database.get_all_departments()
     return render_template('teachers.html', active_page='teachers', users=teachers, teachers=teachers, departments=departments)
 
-@app.route('/teachers/delete/<int:user_id>', methods=['POST'], endpoint='delete_teacher')
-@app.route('/teachers/delete/<int:user_id>', methods=['POST'], endpoint='delete_teacher_user')
+@app.route('/teachers/delete/<int:user_id>', methods=['GET', 'POST'], endpoint='delete_teacher')
+@app.route('/teachers/delete/<int:user_id>', methods=['GET', 'POST'], endpoint='delete_teacher_user')
 @login_required
-@admin_required
 def delete_teacher_user(user_id):
-    database.delete_teacher_user(user_id)
-    flash("Faculty account deleted.", "success")
+    try:
+        database.delete_teacher_user(user_id)
+        flash("Faculty account deleted successfully.", "success")
+    except Exception as e:
+        flash(f"Could not delete teacher account: {e}", "error")
     return redirect(url_for('teachers_management'))
 
 @app.route('/timetable', methods=['GET', 'POST'], endpoint='timetable_management')
