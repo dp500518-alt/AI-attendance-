@@ -569,15 +569,37 @@ def retrain_embeddings():
 @app.route('/settings/export_db', endpoint='export_database')
 @login_required
 def export_database():
-    if os.path.exists(config.DB_PATH):
-        return send_file(config.DB_PATH, as_attachment=True)
-    flash("Database file not found.", "error")
-    return redirect(url_for('settings'))
+    try:
+        data = database.export_database_json()
+        json_bytes = json.dumps(data, indent=2).encode('utf-8')
+        return Response(
+            json_bytes,
+            mimetype="application/json",
+            headers={"Content-disposition": "attachment; filename=smart_attendance_backup.json"}
+        )
+    except Exception as e:
+        flash(f"Export error: {e}", "error")
+        return redirect(url_for('settings'))
 
 @app.route('/settings/import_db', methods=['POST'], endpoint='import_database')
 @login_required
 def import_database():
-    flash("Database import processing...", "info")
+    file = request.files.get('backup_file') or request.files.get('database_file')
+    if not file or not file.filename:
+        flash("Please select a valid JSON backup file (.json) to import.", "error")
+        return redirect(url_for('settings'))
+
+    try:
+        content = file.read().decode('utf-8')
+        data = json.loads(content)
+        success, msg = database.import_database_json(data)
+        if success:
+            flash("Database imported & synchronized successfully! Cloud student data is now present in your local database.", "success")
+        else:
+            flash(f"Database import notice: {msg}", "error")
+    except Exception as e:
+        flash(f"Error reading backup file: {e}", "error")
+
     return redirect(url_for('settings'))
 
 @app.route('/settings/change-password', methods=['POST'], endpoint='change_password')
