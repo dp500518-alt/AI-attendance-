@@ -344,6 +344,12 @@ def init_db():
     conn.commit()
     conn.close()
 
+    # Automatically restore from backup_seed.json if database tables are empty (e.g. Vercel cold boot)
+    try:
+        restore_from_backup_seed()
+    except Exception as e_json:
+        database_logger.error(f"Error restoring from backup_seed.json: {e_json}")
+
     # Automatically seed faculty accounts & BE SEM VII A timetable if empty
     try:
         seed_faculty_and_timetable_if_empty()
@@ -355,6 +361,66 @@ def init_db():
         run_startup_database_recovery()
     except Exception as e_rec:
         database_logger.error(f"Startup persistence recovery error: {e_rec}")
+
+def restore_from_backup_seed():
+    """
+    Loads database/backup_seed.json on fresh environment initialization (e.g., Vercel /tmp DB boot).
+    """
+    seed_path = os.path.join(config.BASE_DIR, 'database', 'backup_seed.json')
+    if not os.path.exists(seed_path):
+        return False
+    try:
+        with open(seed_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        valid_tables = [r[0] for r in cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall()]
+
+        table_map = {
+            'students': 'Students',
+            'Students': 'Students',
+            'embeddings': 'Embeddings',
+            'Embeddings': 'Embeddings',
+            'photos': 'StudentPhotos',
+            'StudentPhotos': 'StudentPhotos',
+            'users': 'Users',
+            'Users': 'Users',
+            'timetable': 'Timetable',
+            'Timetable': 'Timetable',
+            'teacher_timetable': 'teacher_timetable',
+            'attendance': 'Attendance',
+            'Attendance': 'Attendance',
+            'subjects': 'Subjects',
+            'Subjects': 'Subjects',
+            'settings': 'Settings',
+            'Settings': 'Settings',
+            'notifications': 'Notifications',
+            'Notifications': 'Notifications'
+        }
+
+        for json_key, rows in data.items():
+            if not isinstance(rows, list) or not rows:
+                continue
+            table_name = table_map.get(json_key, json_key if json_key in valid_tables else None)
+            if not table_name or table_name not in valid_tables:
+                continue
+
+            cursor.execute(f"SELECT COUNT(*) as cnt FROM {table_name}")
+            if cursor.fetchone()['cnt'] == 0:
+                cols = list(rows[0].keys())
+                placeholders = ", ".join(["?"] * len(cols))
+                col_names = ", ".join(cols)
+                sql = f"INSERT OR IGNORE INTO {table_name} ({col_names}) VALUES ({placeholders})"
+                for row in rows:
+                    cursor.execute(sql, [row.get(c) for c in cols])
+
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        database_logger.error(f"Error restoring from backup_seed.json: {e}")
+        return False
 
 def seed_faculty_and_timetable_if_empty():
     """
